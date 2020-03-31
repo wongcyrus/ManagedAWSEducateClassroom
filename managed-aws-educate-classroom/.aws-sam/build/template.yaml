@@ -1,0 +1,81 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: 'managed-aws-educate-classroom Sample SAM Template for managed-aws-educate-classroom
+
+  '
+Globals:
+  Function:
+    Timeout: 60
+    Runtime: nodejs12.x
+    Environment:
+      Variables:
+        StudentAccountTable:
+          Ref: StudentAccountTable
+Parameters:
+  Password:
+    Type: String
+    NoEcho: true
+Resources:
+  InitStudentAccountFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: InitStudentAccountFunction
+      Handler: app.lambdaHandler
+      Policies:
+      - AmazonDynamoDBFullAccess
+      - Version: '2012-10-17'
+        Statement:
+        - Effect: Allow
+          Action: sts:AssumeRole
+          Resource: arn:aws:iam::*:role/crossaccountteacher
+  CreateStudentStackFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: CreateStudentStackFunction
+      Handler: app.lambdaHandler
+      Policies:
+      - AmazonDynamoDBFullAccess
+      - Version: '2012-10-17'
+        Statement:
+        - Effect: Allow
+          Action: sts:AssumeRole
+          Resource: arn:aws:iam::*:role/crossaccountteacher
+  StudentAccountTable:
+    Type: AWS::Serverless::SimpleTable
+  TeacherUser:
+    Type: AWS::IAM::User
+    Properties:
+      UserName: teacher
+      LoginProfile:
+        Password:
+          Ref: Password
+      Policies:
+      - PolicyName: TeacherAssumeRole
+        PolicyDocument:
+          Version: '2012-10-17'
+          Statement:
+          - Effect: Allow
+            Action: sts:AssumeRole
+            Resource: arn:aws:iam::*:role/crossaccountteacher
+  TeacherUserKey:
+    Type: AWS::IAM::AccessKey
+    Properties:
+      UserName:
+        Ref: TeacherUser
+Outputs:
+  InitStudentAccountFunctionIamRole:
+    Description: Implicit IAM Role created forInitStudentAccountFunction
+    Value:
+      Fn::GetAtt:
+      - InitStudentAccountFunctionRole
+      - Arn
+  AccessKey:
+    Value:
+      Ref: TeacherUserKey
+    Description: AWSAccessKeyId of Teacher User
+  SecretKey:
+    Value:
+      Fn::GetAtt:
+      - TeacherUserKey
+      - SecretAccessKey
+    Description: AWSSecretAccessKey of Teacher User

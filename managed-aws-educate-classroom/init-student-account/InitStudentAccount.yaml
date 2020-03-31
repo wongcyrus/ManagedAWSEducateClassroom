@@ -1,0 +1,28 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Parameters:
+  TeacherAccountId:
+    Type: String
+Resources:
+  StudentAccountRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: crossaccountteacher
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+        - Effect: Allow
+          Principal:
+            AWS: !Sub 'arn:aws:iam::${TeacherAccountId}:root'
+          Action: sts:AssumeRole
+      Path: /
+      Policies:
+      - PolicyName: TeacherAssumeRole
+        PolicyDocument:
+          Version: '2012-10-17'
+          Statement:
+          - Effect: Allow
+            Action: "*"
+            Resource: "*"
+Outputs:
+  StudentAccountRole:
+    Value: !GetAtt StudentAccountRole.Arn

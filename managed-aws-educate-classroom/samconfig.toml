@@ -1,0 +1,12 @@
+version = 0.1
+[default]
+[default.deploy]
+[default.deploy.parameters]
+stack_name = "managed-aws-educate-classroom"
+s3_bucket = "aws-sam-cli-managed-default-samclisourcebucket-1mhzjm1gn6clf"
+s3_prefix = "managed-aws-educate-classroom"
+region = "us-east-1"
+confirm_changeset = false
+capabilities = "CAPABILITY_NAMED_IAM"
+parameter_overrides = 'Password="Password@1234"'
+
