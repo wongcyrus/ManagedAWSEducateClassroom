@@ -49,12 +49,11 @@ const initStudentAccount = async(email, rawKey) => {
             "studentAccountArn": studentAcocuntIdentity.Arn,
             "awsAccountId": studentAcocuntIdentity.Account
         }
-    });
+    }).promise();
     console.log(result);
 };
 
 exports.lambdaHandler = async(event, context) => {
-    let key = event.key;
-    await initStudentAccount("cywong@vtc.edu.hk", key);
+    await initStudentAccount(event.email, event.key);
     return "OK";
 };

@@ -31,8 +31,13 @@ const createStudentLabStack = async(param) => {
 };
 
 exports.lambdaHandler = async(event, context) => {
+    let studentAccount = await dynamo.get({
+        TableName: studentAccountTable,
+        Key: { 'id': event.email }
+    }).promise();
+    console.log(studentAccount);
     const param = {
-        roleArn: 'arn:aws:iam::300944606848:role/crossaccountteacher',
+        roleArn: `arn:aws:iam::${studentAccount.Item.awsAccountId}:role/crossaccountteacher`,
         templateFile: "cloud9.yaml",
         parameters: [{
                 ParameterKey: 'EC2InstanceType',
@@ -40,7 +45,7 @@ exports.lambdaHandler = async(event, context) => {
             },
             {
                 ParameterKey: 'OwnerArn',
-                ParameterValue: "arn:aws:sts::300944606848:assumed-role/vocstartsoft/user114038=Chun_Yin,_Cyrus_Wong"
+                ParameterValue: studentAccount.Item.studentAccountArn
             }
         ]
     };
