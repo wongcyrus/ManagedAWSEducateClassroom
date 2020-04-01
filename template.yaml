@@ -6,43 +6,56 @@ Description: >
 
 Globals:
   Function:
-    Timeout: 60
+    Handler: app.lambdaHandler
+    Timeout: 180
     Runtime: nodejs12.x
     Environment:
       Variables:
         StudentAccountTable: !Ref StudentAccountTable    
-        
+ 
+            
 Parameters:
   Password:
     Type: String
     NoEcho: true
+    
 Resources:
 
-  InitStudentAccountFunction:
+  SetupStudentAccountFunction:
     Type: AWS::Serverless::Function
     Properties:
-      CodeUri: init-student-account/
-      Handler: app.lambdaHandler
+      CodeUri: setup-student-account/
       Policies:
         - AmazonDynamoDBFullAccess
         - Version: '2012-10-17'
           Statement:
             - Effect: Allow
               Action: "sts:AssumeRole"
-              Resource: "arn:aws:iam::*:role/crossaccountteacher"
-
+              Resource: "arn:aws:iam::*:role/crossaccountteacher" 
+              
   CreateStudentStackFunction:
     Type: AWS::Serverless::Function
     Properties:
       CodeUri: create-student-stack/
-      Handler: app.lambdaHandler
       Policies:
         - AmazonDynamoDBFullAccess
         - Version: '2012-10-17'
           Statement:
             - Effect: Allow
               Action: "sts:AssumeRole"
-              Resource: "arn:aws:iam::*:role/crossaccountteacher"
+              Resource: "arn:aws:iam::*:role/crossaccountteacher" 
+              
+  DeleteStudentStackFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: delete-student-stack/
+      Policies:
+        - AmazonDynamoDBFullAccess
+        - Version: '2012-10-17'
+          Statement:
+            - Effect: Allow
+              Action: "sts:AssumeRole"
+              Resource: "arn:aws:iam::*:role/crossaccountteacher" 
               
   StudentAccountTable:
     Type: AWS::Serverless::SimpleTable
@@ -61,6 +74,12 @@ Resources:
             - Effect: Allow
               Action: "sts:AssumeRole"
               Resource: "arn:aws:iam::*:role/crossaccountteacher"
+            - Effect: Allow
+              Action: "lambda:InvokeFunction"
+              Resource: 
+                - !GetAtt SetupStudentAccountFunction.Arn
+                - !GetAtt CreateStudentStackFunction.Arn
+                - !GetAtt DeleteStudentStackFunction.Arn
               
   TeacherUserKey:
     Type: AWS::IAM::AccessKey
@@ -69,9 +88,15 @@ Resources:
         Ref: TeacherUser    
         
 Outputs:
-  InitStudentAccountFunctionIamRole:
-    Description: "Implicit IAM Role created forInitStudentAccountFunction"
-    Value: !GetAtt InitStudentAccountFunctionRole.Arn
+  SetupStudentAccountFunction:
+    Description: "SetupStudentAccountFunction"
+    Value: !GetAtt SetupStudentAccountFunction.Arn
+  CreateStudentStackFunction:
+    Description: "CreateStudentStackFunction"
+    Value: !GetAtt CreateStudentStackFunction.Arn
+  DeleteStudentStackFunction:
+    Description: "DeleteStudentStackFunction"
+    Value: !GetAtt DeleteStudentStackFunction.Arn
   AccessKey:
     Value: !Ref 'TeacherUserKey'
     Description: AWSAccessKeyId of Teacher User

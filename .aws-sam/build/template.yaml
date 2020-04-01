@@ -5,7 +5,8 @@ Description: 'managed-aws-educate-classroom Sample SAM Template for managed-aws-
   '
 Globals:
   Function:
-    Timeout: 60
+    Handler: app.lambdaHandler
+    Timeout: 180
     Runtime: nodejs12.x
     Environment:
       Variables:
@@ -16,11 +17,10 @@ Parameters:
     Type: String
     NoEcho: true
 Resources:
-  InitStudentAccountFunction:
+  SetupStudentAccountFunction:
     Type: AWS::Serverless::Function
     Properties:
-      CodeUri: InitStudentAccountFunction
-      Handler: app.lambdaHandler
+      CodeUri: SetupStudentAccountFunction
       Policies:
       - AmazonDynamoDBFullAccess
       - Version: '2012-10-17'
@@ -32,7 +32,17 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       CodeUri: CreateStudentStackFunction
-      Handler: app.lambdaHandler
+      Policies:
+      - AmazonDynamoDBFullAccess
+      - Version: '2012-10-17'
+        Statement:
+        - Effect: Allow
+          Action: sts:AssumeRole
+          Resource: arn:aws:iam::*:role/crossaccountteacher
+  DeleteStudentStackFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: DeleteStudentStackFunction
       Policies:
       - AmazonDynamoDBFullAccess
       - Version: '2012-10-17'
@@ -57,17 +67,41 @@ Resources:
           - Effect: Allow
             Action: sts:AssumeRole
             Resource: arn:aws:iam::*:role/crossaccountteacher
+          - Effect: Allow
+            Action: lambda:InvokeFunction
+            Resource:
+            - Fn::GetAtt:
+              - SetupStudentAccountFunction
+              - Arn
+            - Fn::GetAtt:
+              - CreateStudentStackFunction
+              - Arn
+            - Fn::GetAtt:
+              - DeleteStudentStackFunction
+              - Arn
   TeacherUserKey:
     Type: AWS::IAM::AccessKey
     Properties:
       UserName:
         Ref: TeacherUser
 Outputs:
-  InitStudentAccountFunctionIamRole:
-    Description: Implicit IAM Role created forInitStudentAccountFunction
+  SetupStudentAccountFunction:
+    Description: SetupStudentAccountFunction
     Value:
       Fn::GetAtt:
-      - InitStudentAccountFunctionRole
+      - SetupStudentAccountFunction
+      - Arn
+  CreateStudentStackFunction:
+    Description: CreateStudentStackFunction
+    Value:
+      Fn::GetAtt:
+      - CreateStudentStackFunction
+      - Arn
+  DeleteStudentStackFunction:
+    Description: DeleteStudentStackFunction
+    Value:
+      Fn::GetAtt:
+      - DeleteStudentStackFunction
       - Arn
   AccessKey:
     Value:

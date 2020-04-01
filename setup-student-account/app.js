@@ -28,7 +28,7 @@ const initStudentAccount = async(email, rawKey) => {
         sessionToken,
         region: "us-east-1"
     });
-    const params = {
+    let params = {
         StackName: 'ManagedAWSEduateClassroom',
         Capabilities: [
             "CAPABILITY_IAM", "CAPABILITY_NAMED_IAM",
@@ -36,18 +36,29 @@ const initStudentAccount = async(email, rawKey) => {
         Parameters: [{
             ParameterKey: 'TeacherAccountId',
             ParameterValue: Account
+        }, {
+            ParameterKey: 'StudentEmail',
+            ParameterValue: email
         }],
         TemplateBody: template
     };
     let response = await cloudformation.createStack(params).promise();
-    console.log(response);
+
+    params = {
+        StackName: 'ManagedAWSEduateClassroom'
+    };
+    await cloudformation.waitFor('stackCreateComplete', params).promise();
+    response = await cloudformation.describeStacks(params).promise();
+    let labStackCreationCompleteTopic = response.Stacks[0].Outputs
+        .find(c => c.OutputKey === "SNSTopicCloudFormation").OutputValue;
 
     let result = await dynamo.put({
         "TableName": studentAccountTable,
         "Item": {
             "id": email,
             "studentAccountArn": studentAcocuntIdentity.Arn,
-            "awsAccountId": studentAcocuntIdentity.Account
+            "awsAccountId": studentAcocuntIdentity.Account,
+            "labStackCreationCompleteTopic": labStackCreationCompleteTopic
         }
     }).promise();
     console.log(result);

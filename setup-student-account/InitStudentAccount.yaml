@@ -1,0 +1,182 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Parameters:
+  TeacherAccountId:
+    Type: String
+  StudentEmail:
+    Type: String
+Resources:
+  
+  StudentAccountRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: crossaccountteacher
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+        - Effect: Allow
+          Principal:
+            AWS: !Sub 'arn:aws:iam::${TeacherAccountId}:root'
+          Action: sts:AssumeRole
+      Path: /
+      Policies:
+      - PolicyName: TeacherAssumeRole
+        PolicyDocument:
+          Version: '2012-10-17'
+          Statement:
+          - Effect: Allow
+            Action: "*"
+            Resource: "*"
+
+  LabStackCreationCompleteTopic:
+    Type: 'AWS::SNS::Topic'
+    Properties: 
+      DisplayName: "LabStackCreationCompleteTopic"
+      TopicName: "LabStackCreationCompleteTopic"
+    
+  StudentSubscription:
+    Type: AWS::SNS::Subscription
+    Properties:
+      Endpoint: !Ref StudentEmail
+      Protocol: email
+      TopicArn: !Ref LabStackCreationCompleteTopic
+
+  # IAM role and inline policy for Lambda function
+  LambdaRole:
+    Type: "AWS::IAM::Role"
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          -
+            Effect: "Allow"
+            Principal:
+              Service:
+                - "lambda.amazonaws.com"
+            Action:
+              - "sts:AssumeRole"
+      Path: "/"
+      Policies:
+        -
+          PolicyName: "cloudformation-notifications-lambda-role-policy"
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              -
+                Effect: "Allow"
+                Action:
+                  - "sns:Publish"
+                Resource: !Ref "LabStackCreationCompleteTopic"
+              -
+                Effect: "Allow"
+                Action:
+                  - "logs:CreateLogGroup"
+                  - "logs:CreateLogStream"
+                  - "logs:PutLogEvents"
+                Resource: "arn:aws:logs:*:*:*"
+              -
+                Effect: "Allow"
+                Action:
+                  - "xray:PutTelemetryRecords"
+                  - "xray:PutTraceSegments"
+                  - "cloudformation:DescribeStacks"
+                Resource: "*"
+
+  # Lambda function to catch CloudFormation events (forwarded by SNS) and create new SNS notifications from them
+  LambdaFunction:
+    Type: "AWS::Lambda::Function"
+    Properties:
+      FunctionName: "cloudformation-notifications-lambda"
+      Description: "Forward CloudFormation notifications to SNS topic"
+      Handler: "index.handler"
+      Role: !GetAtt "LambdaRole.Arn"
+      Environment:
+        Variables:
+          SNS_TOPIC_ARN: !Ref "LabStackCreationCompleteTopic"
+          NOTIFICATION_TYPES: "CREATE_COMPLETE"
+      Code:
+        ZipFile: |
+            import os
+            import boto3
+            import json
+            import re
+            
+            def _to_env(name):
+              s1 = re.sub('(.)([A-Z][a-z]+)', r'\1_\2', name)
+              return re.sub('([a-z0-9])([A-Z])', r'\1_\2', s1).upper()
+              
+            def handler(event, context):
+                # Notification types
+                env_notification_types = os.getenv("NOTIFICATION_TYPES", None)
+                notification_types = env_notification_types.split(",") if env_notification_types else None
+                if not notification_types:
+                    print("At least one CloudFormation notification type needs to be specified")
+                    return
+                # SNS topic ARN
+                sns_topic_arn = os.getenv("SNS_TOPIC_ARN", None)
+                if not sns_topic_arn:
+                    print("The ARN of the SNS topic needs to be specified")
+                    return
+                try:
+                    message = str(event["Records"][0]["Sns"]["Message"]).replace("\n", ",")
+                except Exception:
+                    print("Message could not be parsed. Event: %s" % (event))
+                    return
+                # Ignore resources that are not the CloudFormation stack itself
+                if "ResourceType='AWS::CloudFormation::Stack'" not in message:
+                    return
+                for notification_type in notification_types:
+                    if notification_type not in message:
+                        continue
+                    sns_subject = "CloudFormation %s" % (notification_type)
+                    
+                    m = str(event["Records"][0]["Sns"]["Message"])
+                    start = m.find("StackName='") + len("StackName='")
+                    end = m.find("ClientRequestToken='") - 2
+                    stackName = m[start:end]
+                    print(stackName)
+                    cf = boto3.client('cloudformation')
+                    r = cf.describe_stacks(StackName=stackName)
+
+                    stack, = r['Stacks']
+                    outputs = stack['Outputs']
+                
+                    out = {}
+                    for o in outputs:
+                        key = _to_env(o['OutputKey'])
+                        out[key] = o['OutputValue']
+                    print(json.dumps(out, indent=2))
+                    
+                    sns_message = message.replace(",", "\n")
+                    boto3.client('sns').publish(
+                        Subject=sns_subject,
+                        Message=json.dumps(out, indent=2),
+                        TopicArn=sns_topic_arn
+                    )
+      Runtime: "python3.6"
+      Timeout: "90"
+      TracingConfig:
+        Mode: "Active"
+
+  # SNS topic and inline subscription to forward events to Lambda function
+  SNSTopicCloudFormation:
+    Type: "AWS::SNS::Topic"
+    Properties:
+      Subscription:
+        -
+          Endpoint: !GetAtt "LambdaFunction.Arn"
+          Protocol: "lambda"
+    DependsOn: "LambdaFunction"
+
+  # Lambda permission to allow SNS to forward events to Lambda function
+  LambdaPermission:
+    Type: "AWS::Lambda::Permission"
+    Properties:
+      Action: "lambda:InvokeFunction"
+      Principal: "sns.amazonaws.com"
+      SourceArn: !Ref "SNSTopicCloudFormation"
+      FunctionName: !GetAtt "LambdaFunction.Arn"    
+Outputs:
+  StudentAccountRole:
+    Value: !GetAtt StudentAccountRole.Arn
+  SNSTopicCloudFormation:
+    Value: !Ref SNSTopicCloudFormation
