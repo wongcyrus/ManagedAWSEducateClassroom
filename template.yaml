@@ -3,7 +3,18 @@ Transform: AWS::Serverless-2016-10-31
 Description: >
   managed-aws-educate-classroom
   Sample SAM Template for managed-aws-educate-classroom
-
+ 
+Parameters:
+  Password:
+    Type: String
+    NoEcho: true
+  SNSTopic:
+    Type: String
+    Default: ""
+  BucketName:
+    Type: String
+    Default: ""
+    
 Globals:
   Function:
     Handler: app.lambdaHandler
@@ -12,27 +23,60 @@ Globals:
     Environment:
       Variables:
         StudentAccountTable: !Ref StudentAccountTable    
- 
-            
-Parameters:
-  Password:
-    Type: String
-    NoEcho: true
-    
+
+Conditions:
+  HasSnsTopic: !Not [ !Equals [ !Ref SNSTopic, "" ]]
+
 Resources:
 
+  SetupStudentAccountQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      VisibilityTimeout: 180
+      RedrivePolicy: 
+        deadLetterTargetArn: !GetAtt SetupStudentAccountDeadLetterQueue.Arn
+        maxReceiveCount: 3    
+  SetupStudentAccountDeadLetterQueue: 
+    Type: AWS::SQS::Queue
+
+  SetupStudentAccountQueuePolicy:
+    Type: AWS::SQS::QueuePolicy
+    Condition: HasSnsTopic
+    Properties:
+      Queues: [!Ref 'SetupStudentAccountQueue']
+      PolicyDocument:
+        Version: '2008-10-17'
+        Id: PublicationPolicy
+        Statement:
+        - Sid: Allow-SNS-SendMessage
+          Effect: Allow
+          Principal:
+            AWS: '*'
+          Action: ['sqs:SendMessage']
+          Resource: !GetAtt [SetupStudentAccountQueue, Arn]
+          Condition:
+            ArnEquals:
+              aws:SourceArn: !Ref 'SNSTopic'
+       
   SetupStudentAccountFunction:
     Type: AWS::Serverless::Function
     Properties:
       CodeUri: setup-student-account/
       Policies:
         - AmazonDynamoDBFullAccess
+        - !If [HasSnsTopic, S3ReadPolicy:{ BucketName: !Ref 'BucketName'}, !Ref "AWS::NoValue"]
         - Version: '2012-10-17'
           Statement:
             - Effect: Allow
               Action: "sts:AssumeRole"
               Resource: "arn:aws:iam::*:role/crossaccountteacher" 
-              
+      Events:
+        MySQSEvent:
+          Type: SQS
+          Properties:
+            Queue: !GetAtt SetupStudentAccountQueue.Arn
+            BatchSize: 1
+            
   CreateStudentStackFunction:
     Type: AWS::Serverless::Function
     Properties:
@@ -88,6 +132,8 @@ Resources:
         Ref: TeacherUser    
         
 Outputs:
+  SetupStudentAccountQueue:
+    Value: !GetAtt SetupStudentAccountQueue.Arn
   SetupStudentAccountFunction:
     Description: "SetupStudentAccountFunction"
     Value: !GetAtt SetupStudentAccountFunction.Arn

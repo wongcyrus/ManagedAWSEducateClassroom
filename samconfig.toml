@@ -3,10 +3,10 @@ version = 0.1
 [default.deploy]
 [default.deploy.parameters]
 stack_name = "managed-aws-educate-classroom"
-s3_bucket = "aws-sam-cli-managed-default-samclisourcebucket-1mhzjm1gn6clf"
+s3_bucket = "amplify-allscreens-production-40814-deployment"
 s3_prefix = "managed-aws-educate-classroom"
 region = "us-east-1"
 confirm_changeset = false
 capabilities = "CAPABILITY_NAMED_IAM"
-parameter_overrides = 'Password="Password@1234"'
+parameter_overrides = 'Password="Password@1234" BucketName="awssesinboxstack-sesinboxinboxbucketec1a30f6-vssumvsmfjis" SNSTopic="arn:aws:sns:us-east-1:467005446488:AwsSesInboxStack-SesInboxTopic7847F84E-KWDJ8VRUKS0O"'
 
