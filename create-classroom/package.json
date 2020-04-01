@@ -1,7 +1,7 @@
 {
-  "name": "delete-student-stack",
+  "name": "create-classroom",
   "version": "1.0.0",
-  "description": "delete-student-stack",
+  "description": "create-classroom",
   "main": "app.js",
   "author": "SAM CLI",
   "license": "MIT",

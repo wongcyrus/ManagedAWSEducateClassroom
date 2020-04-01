@@ -8,5 +8,5 @@ s3_prefix = "managed-aws-educate-classroom"
 region = "us-east-1"
 confirm_changeset = false
 capabilities = "CAPABILITY_NAMED_IAM"
-parameter_overrides = 'Password="Password@1234" BucketName="awssesinboxstack-sesinboxinboxbucketec1a30f6-vssumvsmfjis" SNSTopic="arn:aws:sns:us-east-1:467005446488:AwsSesInboxStack-SesInboxTopic7847F84E-KWDJ8VRUKS0O"'
+parameter_overrides = 'Password="Password@1234" StudentCommandEmail="student-aws-account@wongcyrus.codes" StudentEmailDomains="vtc.edu.hk,stu.vtc.edu.hk" BucketName="awssesinboxstack-sesinboxinboxbucketec1a30f6-vssumvsmfjis"     SNSTopic="arn:aws:sns:us-east-1:467005446488:AwsSesInboxStack-SesInboxTopic7847F84E-KWDJ8VRUKS0O"'
 

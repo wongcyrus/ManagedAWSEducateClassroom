@@ -13,6 +13,12 @@ Parameters:
   BucketName:
     Type: String
     Default: ''
+  StudentCommandEmail:
+    Type: String
+    Default: ''
+  StudentEmailDomains:
+    Type: String
+    Default: ''
 Globals:
   Function:
     Handler: app.lambdaHandler
@@ -22,6 +28,8 @@ Globals:
       Variables:
         StudentAccountTable:
           Ref: StudentAccountTable
+        ClassRoomAccountTable:
+          Ref: ClassRoomAccountTable
 Conditions:
   HasSnsTopic:
     Fn::Not:
@@ -41,6 +49,25 @@ Resources:
         maxReceiveCount: 3
   SetupStudentAccountDeadLetterQueue:
     Type: AWS::SQS::Queue
+  SetupStudentAccountSubscription:
+    Type: AWS::SNS::Subscription
+    Properties:
+      TopicArn:
+        Ref: SNSTopic
+      Endpoint:
+        Fn::GetAtt:
+        - SetupStudentAccountQueue
+        - Arn
+      Protocol: sqs
+      FilterPolicy:
+        receiver:
+        - Ref: StudentCommandEmail
+        intentName:
+        - RegisterStudentAccountIntent
+        senderEmailDomain:
+          Fn::Split:
+          - ','
+          - Ref: StudentEmailDomains
   SetupStudentAccountQueuePolicy:
     Type: AWS::SQS::QueuePolicy
     Condition: HasSnsTopic
@@ -113,7 +140,15 @@ Resources:
         - Effect: Allow
           Action: sts:AssumeRole
           Resource: arn:aws:iam::*:role/crossaccountteacher
+  CreateClassroomFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: CreateClassroomFunction
+      Policies:
+      - AmazonDynamoDBFullAccess
   StudentAccountTable:
+    Type: AWS::Serverless::SimpleTable
+  ClassRoomAccountTable:
     Type: AWS::Serverless::SimpleTable
   TeacherUser:
     Type: AWS::IAM::User

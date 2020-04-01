@@ -1,7 +1,7 @@
 {
-  "name": "init-student-account",
+  "name": "delete-student-stack",
   "version": "1.0.0",
-  "description": "init-student-account",
+  "description": "delete-student-stack",
   "main": "app.js",
   "author": "SAM CLI",
   "license": "MIT",
