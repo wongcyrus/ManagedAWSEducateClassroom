@@ -20,22 +20,38 @@ Parameters:
   StudentEmailDomains:
     Type: String
     Default: ""
+  TeacherCommandEmail:
+    Type: String
+    Default: ""
+  TeacherEmailDomains:
+    Type: String
+    Default: ""
     
 Globals:
   Function:
     Handler: app.lambdaHandler
     Timeout: 180
     Runtime: nodejs12.x
+    Layers: 
+      - !Ref CommonLayer
     Environment:
       Variables:
         StudentAccountTable: !Ref StudentAccountTable
         ClassRoomAccountTable: !Ref ClassRoomAccountTable
-
 Conditions:
   HasSnsTopic: !Not [ !Equals [ !Ref SNSTopic, "" ]]
 
 Resources:
 
+  CommonLayer:
+    Type: AWS::Serverless::LayerVersion
+    Properties:
+      LayerName: managed-aws-educate-classroom-common-layer
+      Description: Common code.
+      ContentUri: layer/
+      CompatibleRuntimes:
+        - nodejs12.x
+        
   SetupStudentAccountQueue:
     Type: AWS::SQS::Queue
     Properties:
@@ -50,7 +66,7 @@ Resources:
     Type: 'AWS::SNS::Subscription'
     Properties:
       TopicArn: !Ref SNSTopic
-      Endpoint: !GetAtt [SetupStudentAccountQueue, Arn]
+      Endpoint: !GetAtt SetupStudentAccountQueue.Arn
       Protocol: sqs
       FilterPolicy:
         receiver:
@@ -91,7 +107,7 @@ Resources:
               Action: "sts:AssumeRole"
               Resource: "arn:aws:iam::*:role/crossaccountteacher" 
       Events:
-        MySQSEvent:
+        SQSEvent:
           Type: SQS
           Properties:
             Queue: !GetAtt SetupStudentAccountQueue.Arn
@@ -120,13 +136,62 @@ Resources:
             - Effect: Allow
               Action: "sts:AssumeRole"
               Resource: "arn:aws:iam::*:role/crossaccountteacher" 
-              
+
+
+  CreateClassroomQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      VisibilityTimeout: 180
+      RedrivePolicy: 
+        deadLetterTargetArn: !GetAtt CreateClassroomDeadLetterQueue.Arn
+        maxReceiveCount: 3    
+  CreateClassroomDeadLetterQueue: 
+    Type: AWS::SQS::Queue
+
+  CreateClassroomSubscription:
+    Type: 'AWS::SNS::Subscription'
+    Properties:
+      TopicArn: !Ref SNSTopic
+      Endpoint: !GetAtt [CreateClassroomQueue, Arn]
+      Protocol: sqs
+      FilterPolicy:
+        receiver:
+          - !Ref TeacherCommandEmail
+        intentName:
+          - CreateClassroomIntent
+        senderEmailDomain: !Split [ "," , !Ref TeacherEmailDomains]
+          
+  CreateClassroomQueuePolicy:
+    Type: AWS::SQS::QueuePolicy
+    Condition: HasSnsTopic
+    Properties:
+      Queues: [!Ref 'CreateClassroomQueue']
+      PolicyDocument:
+        Version: '2008-10-17'
+        Id: PublicationPolicy
+        Statement:
+        - Sid: Allow-SNS-SendMessage
+          Effect: Allow
+          Principal:
+            AWS: '*'
+          Action: ['sqs:SendMessage']
+          Resource: !GetAtt CreateClassroomQueue.Arn
+          Condition:
+            ArnEquals:
+              aws:SourceArn: !Ref 'SNSTopic'              
   CreateClassroomFunction:
     Type: AWS::Serverless::Function
     Properties:
       CodeUri: create-classroom/
       Policies:
         - AmazonDynamoDBFullAccess
+      Events:
+        SQSEvent:
+          Type: SQS
+          Properties:
+            Queue: !GetAtt CreateClassroomQueue.Arn
+            BatchSize: 1        
+        
 
   StudentAccountTable:
     Type: AWS::Serverless::SimpleTable

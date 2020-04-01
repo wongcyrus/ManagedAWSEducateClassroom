@@ -23,6 +23,17 @@ const getS3File = async(bucket, key) => {
     return response.Body.toString();
 };
 
+const getMessage = async(event) => {
+    let message = JSON.parse((JSON.parse(event.Records[0].body)).Message);
+    console.log(message);
+    let { inboxBucket, trimedEmailJson } = message;
+    const trimedEmailJsonContent = await getS3File(inboxBucket, trimedEmailJson);
+    const emailBody = JSON.parse(trimedEmailJsonContent).content;
+    console.log(emailBody);
+    return { message, emailBody };
+};
+
+
 const initStudentAccount = async(email, rawKey) => {
     let sts = new AWS.STS();
     const { Account } = await sts.getCallerIdentity().promise();
@@ -73,15 +84,11 @@ const initStudentAccount = async(email, rawKey) => {
     console.log(result);
 };
 
+
 exports.lambdaHandler = async(event, context) => {
     console.log(event);
     if (event.Records) {
-        let message = JSON.parse((JSON.parse(event.Records[0].body)).Message);
-        console.log(message);
-        let { inboxBucket, trimedEmailJson } = message;
-        const trimedEmailJsonContent = await getS3File(inboxBucket,trimedEmailJson);
-        const emailBody = JSON.parse(trimedEmailJsonContent).content;
-        console.log(emailBody);
+        let { message, emailBody } = getMessage(event);
         await initStudentAccount(message.sender, emailBody);
     }
     await initStudentAccount(event.email, event.key);
