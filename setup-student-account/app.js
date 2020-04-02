@@ -14,7 +14,7 @@ const extractKeys = rawKey => {
     return { accessKeyId, secretAccessKey, sessionToken };
 };
 
-const initStudentAccount = async(classRoomNumber, email, rawKey) => {
+const initStudentAccount = async(classroomNumber, email, rawKey) => {
     let sts = new AWS.STS();
     const { Account } = await sts.getCallerIdentity().promise();
     const { accessKeyId, secretAccessKey, sessionToken } = extractKeys(rawKey);
@@ -52,10 +52,13 @@ const initStudentAccount = async(classRoomNumber, email, rawKey) => {
     let labStackCreationCompleteTopic = response.Stacks[0].Outputs
         .find(c => c.OutputKey === "SNSTopicCloudFormation").OutputValue;
 
+    console.log(classroomNumber, email, rawKey);
+
     let result = await dynamo.put({
         "TableName": studentAccountTable,
         "Item": {
-            "id": classRoomNumber + "-" + email,
+            "classroomNumber": parseInt(classroomNumber, 10),
+            "email": email,
             "studentAccountArn": studentAcocuntIdentity.Arn,
             "awsAccountId": studentAcocuntIdentity.Account,
             "labStackCreationCompleteTopic": labStackCreationCompleteTopic
@@ -71,8 +74,8 @@ exports.lambdaHandler = async(event, context) => {
         let { message, emailBody } = await common.getMessage(event);
         console.log(message);
         console.log(emailBody);
-        await initStudentAccount(message.slots.classRoomNumber, message.sender, emailBody);
+        await initStudentAccount(message.slots.classroomNumber, message.sender, emailBody);
     }
-    await initStudentAccount(event.classRoomNumber, event.email, event.key);
+    await initStudentAccount(event.classroomNumber, event.email, event.key);
     return "OK";
 };

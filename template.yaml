@@ -37,7 +37,7 @@ Globals:
     Environment:
       Variables:
         StudentAccountTable: !Ref StudentAccountTable
-        ClassRoomAccountTable: !Ref ClassRoomAccountTable
+
 Conditions:
   HasSnsTopic: !Not [ !Equals [ !Ref SNSTopic, "" ]]
 
@@ -119,6 +119,7 @@ Resources:
       CodeUri: create-student-stack/
       Policies:
         - AmazonDynamoDBFullAccess
+        - !If [HasSnsTopic, S3ReadPolicy:{ BucketName: !Ref 'BucketName'}, !Ref "AWS::NoValue"]
         - Version: '2012-10-17'
           Statement:
             - Effect: Allow
@@ -185,6 +186,12 @@ Resources:
       CodeUri: create-classroom/
       Policies:
         - AmazonDynamoDBFullAccess
+        - !If [HasSnsTopic, S3ReadPolicy:{ BucketName: !Ref 'BucketName'}, !Ref "AWS::NoValue"]
+        - LambdaInvokePolicy:
+            FunctionName: !Ref CreateStudentStackFunction
+      Environment:
+        Variables:
+          CreateStudentStackFunctionArn: !GetAtt CreateStudentStackFunction.Arn
       Events:
         SQSEvent:
           Type: SQS
@@ -192,13 +199,37 @@ Resources:
             Queue: !GetAtt CreateClassroomQueue.Arn
             BatchSize: 1        
         
-
-  StudentAccountTable:
-    Type: AWS::Serverless::SimpleTable
+  StudentAccountTable: 
+    Type: AWS::DynamoDB::Table
+    Properties: 
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions: 
+        - 
+          AttributeName: "classroomNumber"
+          AttributeType: "N"
+        - 
+          AttributeName: "email"
+          AttributeType: "S"
+      KeySchema: 
+        - 
+          AttributeName: "classroomNumber"
+          KeyType: "HASH"
+        - 
+          AttributeName: "email"
+          KeyType: "RANGE"
+      GlobalSecondaryIndexes: 
+        - 
+          IndexName: "emailGSI"
+          KeySchema: 
+            - 
+              AttributeName: "email"
+              KeyType: "HASH"
+            - 
+              AttributeName: "classroomNumber"
+              KeyType: "RANGE"
+          Projection: 
+            ProjectionType: "ALL"
     
-  ClassRoomAccountTable:
-    Type: AWS::Serverless::SimpleTable    
-            
   TeacherUser:
     Type: AWS::IAM::User
     Properties:

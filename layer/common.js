@@ -13,10 +13,10 @@ module.exports.getS3File = async(bucket, key) => {
 
 module.exports.getMessage = async(event) => {
     let message = JSON.parse((JSON.parse(event.Records[0].body)).Message);
-    console.log(message);
     let { inboxBucket, trimedEmailJson } = message;
     const trimedEmailJsonContent = await module.exports.getS3File(inboxBucket, trimedEmailJson);
     const emailBody = JSON.parse(trimedEmailJsonContent).content;
+    console.log(message);
     console.log(emailBody);
     return { message, emailBody };
 };
