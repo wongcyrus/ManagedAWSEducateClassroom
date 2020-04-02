@@ -2,7 +2,7 @@ const AWS = require('aws-sdk');
 const fs = require('fs');
 const studentAccountTable = process.env.StudentAccountTable;
 const dynamo = new AWS.DynamoDB.DocumentClient();
-const s3 = new AWS.S3();
+const common = require('/opt/common');
 
 const extractKeys = rawKey => {
     const accessKeyStartIndex = rawKey.indexOf("aws_access_key_id=") + "aws_access_key_id=".length;
@@ -14,27 +14,7 @@ const extractKeys = rawKey => {
     return { accessKeyId, secretAccessKey, sessionToken };
 };
 
-const getS3File = async(bucket, key) => {
-    const params = {
-        Bucket: bucket,
-        Key: key
-    };
-    const response = await s3.getObject(params).promise();
-    return response.Body.toString();
-};
-
-const getMessage = async(event) => {
-    let message = JSON.parse((JSON.parse(event.Records[0].body)).Message);
-    console.log(message);
-    let { inboxBucket, trimedEmailJson } = message;
-    const trimedEmailJsonContent = await getS3File(inboxBucket, trimedEmailJson);
-    const emailBody = JSON.parse(trimedEmailJsonContent).content;
-    console.log(emailBody);
-    return { message, emailBody };
-};
-
-
-const initStudentAccount = async(email, rawKey) => {
+const initStudentAccount = async(classRoomNumber, email, rawKey) => {
     let sts = new AWS.STS();
     const { Account } = await sts.getCallerIdentity().promise();
     const { accessKeyId, secretAccessKey, sessionToken } = extractKeys(rawKey);
@@ -75,7 +55,7 @@ const initStudentAccount = async(email, rawKey) => {
     let result = await dynamo.put({
         "TableName": studentAccountTable,
         "Item": {
-            "id": email,
+            "id": classRoomNumber + "-" + email,
             "studentAccountArn": studentAcocuntIdentity.Arn,
             "awsAccountId": studentAcocuntIdentity.Account,
             "labStackCreationCompleteTopic": labStackCreationCompleteTopic
@@ -88,9 +68,11 @@ const initStudentAccount = async(email, rawKey) => {
 exports.lambdaHandler = async(event, context) => {
     console.log(event);
     if (event.Records) {
-        let { message, emailBody } = getMessage(event);
-        await initStudentAccount(message.sender, emailBody);
+        let { message, emailBody } = await common.getMessage(event);
+        console.log(message);
+        console.log(emailBody);
+        await initStudentAccount(message.slots.classRoomNumber, message.sender, emailBody);
     }
-    await initStudentAccount(event.email, event.key);
+    await initStudentAccount(event.classRoomNumber, event.email, event.key);
     return "OK";
 };
