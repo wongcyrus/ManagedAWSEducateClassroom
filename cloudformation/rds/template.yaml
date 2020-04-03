@@ -131,3 +131,7 @@ Resources:
 Outputs:
   Host:
     Value: !GetAtt Cluster.Endpoint.Address
+  MasterUsername:
+    Value: !Ref MasterUsername
+  MasterUserPassword:
+    Value: !Ref MasterUserPassword
