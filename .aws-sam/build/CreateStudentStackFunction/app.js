@@ -43,9 +43,22 @@ exports.lambdaHandler = async(event, context) => {
     }).promise();
     console.log(studentAccount);
 
+    let keyPair = JSON.parse(studentAccount.Item.keyPair);
+
     let parametersString = await common.getS3File(bucket, parametersKey);
-    parametersString = parametersString.replace("studentAccountArn", studentAccount.Item.studentAccountArn);
+    console.log(parametersString);
     let parameters = JSON.parse(parametersString);
+
+    const replaceValue = (key, value) => {
+        let index = parameters.map(c => c.ParameterValue).indexOf(key);
+        if (index != -1) {
+            parameters[index].ParameterValue = value;
+        }
+    };
+
+    replaceValue("###studentAccountArn###", studentAccount.Item.studentAccountArn);
+    replaceValue("###keyPairName###", classroomNumber + "-" + email);
+    replaceValue("###KeyMaterial###", keyPair.KeyMaterial);
     console.log(parameters);
 
     const param = {

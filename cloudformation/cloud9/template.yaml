@@ -3,7 +3,7 @@ Description: AWS Cloud9 Environment
 Parameters:
   OwnerArn:
     Type: String
-  EC2InstanceType:
+  InstanceType:
     Description: EC2 instance type on which IDE runs
     Type:        String
     Default:     t2.micro
@@ -38,8 +38,8 @@ Parameters:
 
   AutoHibernateTimeout:
     Description:  How many minutes idle before shutting down the IDE. Options, 30min, 1hr, 4hr, 1day, 1week, Never (0)
-    Type:         Number
-    Default:      30
+    Type: Number
+    Default: 30
     AllowedValues:
       - 30
       - 60
@@ -53,7 +53,7 @@ Resources:
     Properties:
       OwnerArn: !Ref OwnerArn
       AutomaticStopTimeMinutes: !Ref 'AutoHibernateTimeout'
-      InstanceType: !Ref 'EC2InstanceType'
+      InstanceType: !Ref 'InstanceType'
 
 Outputs:
   Cloud9URL:

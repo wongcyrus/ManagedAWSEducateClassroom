@@ -37,6 +37,7 @@ Globals:
     Environment:
       Variables:
         StudentAccountTable: !Ref StudentAccountTable
+        keyPairBucket: !Ref keyPairBucket
 
 Conditions:
   HasSnsTopic: !Not [ !Equals [ !Ref SNSTopic, "" ]]
@@ -52,7 +53,8 @@ Resources:
       ContentUri: layer/
       CompatibleRuntimes:
         - nodejs12.x
-        
+
+# Setup Student Account.        
   SetupStudentAccountQueue:
     Type: AWS::SQS::Queue
     Properties:
@@ -190,7 +192,6 @@ Resources:
 
             
 # Delete Classroom
-              
   DeleteStudentStackFunction:
     Type: AWS::Serverless::Function
     Properties:
@@ -317,14 +318,19 @@ Resources:
                 - !GetAtt SetupStudentAccountFunction.Arn
                 - !GetAtt CreateStudentStackFunction.Arn
                 - !GetAtt DeleteStudentStackFunction.Arn
-              
+                - !GetAtt CreateClassroomFunction.Arn
+                - !GetAtt DeleteClassroomFunction.Arn              
   TeacherUserKey:
     Type: AWS::IAM::AccessKey
     Condition: HasAdminUser
     Properties:
       UserName:
         Ref: TeacherUser    
-        
+
+
+  keyPairBucket:
+    Type: AWS::S3::Bucket
+    
 Outputs:
   SetupStudentAccountQueue:
     Value: !GetAtt SetupStudentAccountQueue.Arn

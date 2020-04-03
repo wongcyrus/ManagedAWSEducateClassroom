@@ -36,6 +36,8 @@ Globals:
       Variables:
         StudentAccountTable:
           Ref: StudentAccountTable
+        keyPairBucket:
+          Ref: keyPairBucket
 Conditions:
   HasSnsTopic:
     Fn::Not:
@@ -386,12 +388,20 @@ Resources:
             - Fn::GetAtt:
               - DeleteStudentStackFunction
               - Arn
+            - Fn::GetAtt:
+              - CreateClassroomFunction
+              - Arn
+            - Fn::GetAtt:
+              - DeleteClassroomFunction
+              - Arn
   TeacherUserKey:
     Type: AWS::IAM::AccessKey
     Condition: HasAdminUser
     Properties:
       UserName:
         Ref: TeacherUser
+  keyPairBucket:
+    Type: AWS::S3::Bucket
 Outputs:
   SetupStudentAccountQueue:
     Value:

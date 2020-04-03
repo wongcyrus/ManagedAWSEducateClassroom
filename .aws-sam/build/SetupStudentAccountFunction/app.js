@@ -1,6 +1,8 @@
 const AWS = require('aws-sdk');
 const fs = require('fs');
 const studentAccountTable = process.env.StudentAccountTable;
+const keyPairBucket = process.env.keyPairBucket;
+
 const dynamo = new AWS.DynamoDB.DocumentClient();
 const common = require('/opt/common');
 
@@ -54,6 +56,27 @@ const initStudentAccount = async(classroomNumber, email, rawKey) => {
 
     console.log(classroomNumber, email, rawKey);
 
+
+    const ec2 = new AWS.EC2({
+        accessKeyId,
+        secretAccessKey,
+        sessionToken,
+        region: "us-east-1"
+    });
+
+    try {
+        await ec2.deleteKeyPair({
+            KeyName: classroomNumber + "-" + email
+        }).promise();
+    }
+    catch (err) { console.error(err); }
+
+    let keyResponse = await ec2.createKeyPair({
+        KeyName: classroomNumber + "-" + email
+    }).promise();
+
+    let keyPair = JSON.stringify(keyResponse);
+
     let result = await dynamo.put({
         "TableName": studentAccountTable,
         "Item": {
@@ -61,7 +84,8 @@ const initStudentAccount = async(classroomNumber, email, rawKey) => {
             "email": email,
             "studentAccountArn": studentAcocuntIdentity.Arn,
             "awsAccountId": studentAcocuntIdentity.Account,
-            "labStackCreationCompleteTopic": labStackCreationCompleteTopic
+            "labStackCreationCompleteTopic": labStackCreationCompleteTopic,
+            "keyPair": keyPair
         }
     }).promise();
     console.log(result);
@@ -75,7 +99,7 @@ exports.lambdaHandler = async(event, context) => {
         let { message, emailBody } = await common.getMessage(event);
         console.log(message);
         console.log(emailBody);
-        
+
         classroomNumber = message.slots.classroomNumber;
         email = message.sender;
         rawKey = emailBody;
