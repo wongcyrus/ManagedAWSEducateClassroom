@@ -16,7 +16,42 @@ Metadata:
     HomePageUrl: https://github.com/wongcyrus/managed-aws-educate-classroom
     SemanticVersion: 0.0.1
     SourceCodeUrl: https://github.com/wongcyrus/managed-aws-educate-classroom
-    
+
+
+  AWS::CloudFormation::Interface: 
+    ParameterGroups: 
+      - 
+        Label: 
+          default: "AWS SES Inbox (Optional)"
+        Parameters: 
+          - SNSTopic
+          - BucketName
+      - 
+        Label: 
+          default: "Teacher Email Settings (Optional)"
+        Parameters: 
+          - TeacherCommandEmail
+          - TeacherEmailDomains
+      - 
+        Label: 
+          default: "Student Email Settings (Optional)"
+        Parameters: 
+          - StudentCommandEmail
+          - StudentEmailDomains          
+    ParameterLabels: 
+      SNSTopic: 
+        default: "AWS SES Inbox email SNS Topic"
+      BucketName: 
+        default: "AWS SES Inbox Bucket"
+      StudentCommandEmail: 
+        default: "Student Command Email Address"
+      StudentEmailDomains: 
+        default: "White List Student email domain"
+      TeacherCommandEmail: 
+        default: "Teacher Command Email Address"        
+      TeacherEmailDomains: 
+        default: "White List Teacher email domain" 
+        
 Parameters:
   SNSTopic:
     Type: String
@@ -47,10 +82,10 @@ Globals:
     Environment:
       Variables:
         StudentAccountTable: !Ref StudentAccountTable
-        keyPairBucket: !Ref keyPairBucket
+        ClassroomBucket: !Ref ClassroomBucket
 
 Conditions:
-  HasSnsTopic: !Not [ !Equals [ !Ref SNSTopic, "" ]]
+  UseAwsSesInbox: !Not [ !Equals [ !Ref SNSTopic, "" ]]
 
 Resources:
 
@@ -76,6 +111,7 @@ Resources:
 
   SetupStudentAccountSubscription:
     Type: 'AWS::SNS::Subscription'
+    Condition: UseAwsSesInbox
     Properties:
       TopicArn: !Ref SNSTopic
       Endpoint: !GetAtt SetupStudentAccountQueue.Arn
@@ -89,7 +125,7 @@ Resources:
           
   SetupStudentAccountQueuePolicy:
     Type: AWS::SQS::QueuePolicy
-    Condition: HasSnsTopic
+    Condition: UseAwsSesInbox
     Properties:
       Queues: [!Ref 'SetupStudentAccountQueue']
       PolicyDocument:
@@ -112,7 +148,9 @@ Resources:
       CodeUri: setup-student-account/
       Policies:
         - AmazonDynamoDBFullAccess
-        - !If [HasSnsTopic, S3ReadPolicy:{ BucketName: !Ref 'BucketName'}, !Ref "AWS::NoValue"]
+        - S3ReadPolicy:
+            BucketName: !Ref ClassroomBucket
+        - !If [UseAwsSesInbox, S3ReadPolicy:{ BucketName: !Ref 'BucketName'}, !Ref "AWS::NoValue"]
         - Version: '2012-10-17'
           Statement:
             - Effect: Allow
@@ -132,7 +170,9 @@ Resources:
       CodeUri: create-student-stack/
       Policies:
         - AmazonDynamoDBFullAccess
-        - !If [HasSnsTopic, S3ReadPolicy:{ BucketName: !Ref 'BucketName'}, !Ref "AWS::NoValue"]
+        - S3ReadPolicy:
+            BucketName: !Ref ClassroomBucket
+        - !If [UseAwsSesInbox, S3ReadPolicy:{ BucketName: !Ref 'BucketName'}, !Ref "AWS::NoValue"]
         - Version: '2012-10-17'
           Statement:
             - Effect: Allow
@@ -151,6 +191,7 @@ Resources:
 
   CreateClassroomSubscription:
     Type: 'AWS::SNS::Subscription'
+    Condition: UseAwsSesInbox
     Properties:
       TopicArn: !Ref SNSTopic
       Endpoint: !GetAtt [CreateClassroomQueue, Arn]
@@ -164,7 +205,7 @@ Resources:
           
   CreateClassroomQueuePolicy:
     Type: AWS::SQS::QueuePolicy
-    Condition: HasSnsTopic
+    Condition: UseAwsSesInbox
     Properties:
       Queues: [!Ref 'CreateClassroomQueue']
       PolicyDocument:
@@ -186,7 +227,9 @@ Resources:
       CodeUri: create-classroom/
       Policies:
         - AmazonDynamoDBFullAccess
-        - !If [HasSnsTopic, S3ReadPolicy:{ BucketName: !Ref 'BucketName'}, !Ref "AWS::NoValue"]
+        - S3ReadPolicy:
+            BucketName: !Ref ClassroomBucket
+        - !If [UseAwsSesInbox, S3ReadPolicy:{ BucketName: !Ref 'BucketName'}, !Ref "AWS::NoValue"]
         - LambdaInvokePolicy:
             FunctionName: !Ref CreateStudentStackFunction
       Environment:
@@ -207,6 +250,8 @@ Resources:
       CodeUri: delete-student-stack/
       Policies:
         - AmazonDynamoDBFullAccess
+        - S3ReadPolicy:
+            BucketName: !Ref ClassroomBucket
         - Version: '2012-10-17'
           Statement:
             - Effect: Allow
@@ -225,6 +270,7 @@ Resources:
 
   DeleteClassroomSubscription:
     Type: 'AWS::SNS::Subscription'
+    Condition: UseAwsSesInbox    
     Properties:
       TopicArn: !Ref SNSTopic
       Endpoint: !GetAtt [DeleteClassroomQueue, Arn]
@@ -238,7 +284,7 @@ Resources:
           
   DeleteClassroomQueuePolicy:
     Type: AWS::SQS::QueuePolicy
-    Condition: HasSnsTopic
+    Condition: UseAwsSesInbox
     Properties:
       Queues: [!Ref 'DeleteClassroomQueue']
       PolicyDocument:
@@ -260,7 +306,9 @@ Resources:
       CodeUri: delete-classroom/
       Policies:
         - AmazonDynamoDBFullAccess
-        - !If [HasSnsTopic, S3ReadPolicy:{ BucketName: !Ref 'BucketName'}, !Ref "AWS::NoValue"]
+        - S3ReadPolicy:
+            BucketName: !Ref ClassroomBucket
+        - !If [UseAwsSesInbox, S3ReadPolicy:{ BucketName: !Ref 'BucketName'}, !Ref "AWS::NoValue"]
         - LambdaInvokePolicy:
             FunctionName: !Ref DeleteStudentStackFunction
       Environment:
@@ -305,16 +353,16 @@ Resources:
           Projection: 
             ProjectionType: "ALL"
 
-  keyPairBucket:
+  ClassroomBucket:
     Type: AWS::S3::Bucket
     
 Outputs:
   SetupStudentAccountFunction:
     Description: "SetupStudentAccountFunction"
     Value: !GetAtt SetupStudentAccountFunction.Arn
-  CreateStudentStackFunction:
-    Description: "CreateStudentStackFunction"
-    Value: !GetAtt CreateStudentStackFunction.Arn
-  DeleteStudentStackFunction:
-    Description: "DeleteStudentStackFunction"
-    Value: !GetAtt DeleteStudentStackFunction.Arn
+  CreateClassroomFunction:
+    Description: "CreateClassroomFunction"
+    Value: !GetAtt CreateClassroomFunction.Arn
+  DeleteClassroomFunction:
+    Description: "DeleteClassroomFunction"
+    Value: !GetAtt DeleteClassroomFunction.Arn
