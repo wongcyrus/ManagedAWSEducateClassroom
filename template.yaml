@@ -2,12 +2,22 @@ AWSTemplateFormatVersion: '2010-09-09'
 Transform: AWS::Serverless-2016-10-31
 Description: >
   managed-aws-educate-classroom
-  Sample SAM Template for managed-aws-educate-classroom
- 
+Metadata:
+  AWS::ServerlessRepo::Application:
+    Name: managed-aws-educate-classroom
+    Description: >
+      A centralized control to all student’s AWS Educate Classroom Account. 
+      Educators can create and delete cloudformation stack in all student's AWS Account in each AWS Educate Classroom.
+    Author: Cyrus Wong
+    SpdxLicenseId: Apache-2.0
+    LicenseUrl: LICENSE.txt
+    ReadmeUrl: README.md
+    Labels: ['cloudformation']
+    HomePageUrl: https://github.com/wongcyrus/managed-aws-educate-classroom
+    SemanticVersion: 0.0.1
+    SourceCodeUrl: https://github.com/wongcyrus/managed-aws-educate-classroom
+    
 Parameters:
-  Password:
-    Type: String
-    NoEcho: true
   SNSTopic:
     Type: String
     Default: ""
@@ -41,7 +51,6 @@ Globals:
 
 Conditions:
   HasSnsTopic: !Not [ !Equals [ !Ref SNSTopic, "" ]]
-  HasAdminUser: !Not [ !Equals [ !Ref Password, "" ]]
 
 Resources:
 
@@ -296,44 +305,10 @@ Resources:
           Projection: 
             ProjectionType: "ALL"
 
-# Teacher Admin Key    
-  TeacherUser:
-    Type: AWS::IAM::User
-    Condition: HasAdminUser
-    Properties:
-      UserName: teacher
-      LoginProfile:
-        Password: !Ref Password
-      Policies:
-        - PolicyName: TeacherAssumeRole
-          PolicyDocument:
-            Version: '2012-10-17'
-            Statement:
-            - Effect: Allow
-              Action: "sts:AssumeRole"
-              Resource: "arn:aws:iam::*:role/crossaccountteacher"
-            - Effect: Allow
-              Action: "lambda:InvokeFunction"
-              Resource: 
-                - !GetAtt SetupStudentAccountFunction.Arn
-                - !GetAtt CreateStudentStackFunction.Arn
-                - !GetAtt DeleteStudentStackFunction.Arn
-                - !GetAtt CreateClassroomFunction.Arn
-                - !GetAtt DeleteClassroomFunction.Arn              
-  TeacherUserKey:
-    Type: AWS::IAM::AccessKey
-    Condition: HasAdminUser
-    Properties:
-      UserName:
-        Ref: TeacherUser    
-
-
   keyPairBucket:
     Type: AWS::S3::Bucket
     
 Outputs:
-  SetupStudentAccountQueue:
-    Value: !GetAtt SetupStudentAccountQueue.Arn
   SetupStudentAccountFunction:
     Description: "SetupStudentAccountFunction"
     Value: !GetAtt SetupStudentAccountFunction.Arn
@@ -343,13 +318,3 @@ Outputs:
   DeleteStudentStackFunction:
     Description: "DeleteStudentStackFunction"
     Value: !GetAtt DeleteStudentStackFunction.Arn
-    
-# Admin User key    
-  AccessKey:
-    Condition: HasAdminUser
-    Value: !Ref 'TeacherUserKey'
-    Description: AWSAccessKeyId of Teacher User
-  SecretKey:
-    Condition: HasAdminUser
-    Value: !GetAtt [TeacherUserKey, SecretAccessKey]
-    Description: AWSSecretAccessKey of Teacher User
