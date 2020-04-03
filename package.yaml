@@ -15,9 +15,40 @@ Metadata:
     ReadmeUrl: s3://cyruswong-sam-repo/64c2d61c0c4dfbba52cd9a719feb0988
     Labels:
     - cloudformation
+    - AWS_Educate
     HomePageUrl: https://github.com/wongcyrus/managed-aws-educate-classroom
     SemanticVersion: 0.0.1
     SourceCodeUrl: https://github.com/wongcyrus/managed-aws-educate-classroom
+  AWS::CloudFormation::Interface:
+    ParameterGroups:
+    - Label:
+        default: AWS SES Inbox (Optional)
+      Parameters:
+      - SNSTopic
+      - BucketName
+    - Label:
+        default: Teacher Email Settings (Optional)
+      Parameters:
+      - TeacherCommandEmail
+      - TeacherEmailDomains
+    - Label:
+        default: Student Email Settings (Optional)
+      Parameters:
+      - StudentCommandEmail
+      - StudentEmailDomains
+    ParameterLabels:
+      SNSTopic:
+        default: AWS SES Inbox email SNS Topic
+      BucketName:
+        default: AWS SES Inbox Bucket
+      StudentCommandEmail:
+        default: Student Command Email Address
+      StudentEmailDomains:
+        default: White List Student email domain
+      TeacherCommandEmail:
+        default: Teacher Command Email Address
+      TeacherEmailDomains:
+        default: White List Teacher email domain
 Parameters:
   SNSTopic:
     Type: String
@@ -48,10 +79,10 @@ Globals:
       Variables:
         StudentAccountTable:
           Ref: StudentAccountTable
-        keyPairBucket:
-          Ref: keyPairBucket
+        ClassroomBucket:
+          Ref: ClassroomBucket
 Conditions:
-  HasSnsTopic:
+  UseAwsSesInbox:
     Fn::Not:
     - Fn::Equals:
       - Ref: SNSTopic
@@ -79,6 +110,7 @@ Resources:
     Type: AWS::SQS::Queue
   SetupStudentAccountSubscription:
     Type: AWS::SNS::Subscription
+    Condition: UseAwsSesInbox
     Properties:
       TopicArn:
         Ref: SNSTopic
@@ -98,7 +130,7 @@ Resources:
           - Ref: StudentEmailDomains
   SetupStudentAccountQueuePolicy:
     Type: AWS::SQS::QueuePolicy
-    Condition: HasSnsTopic
+    Condition: UseAwsSesInbox
     Properties:
       Queues:
       - Ref: SetupStudentAccountQueue
@@ -126,8 +158,11 @@ Resources:
       CodeUri: s3://cyruswong-sam-repo/e7687cd381fd17b0d45b4432667f7e50
       Policies:
       - AmazonDynamoDBFullAccess
+      - S3ReadPolicy:
+          BucketName:
+            Ref: ClassroomBucket
       - Fn::If:
-        - HasSnsTopic
+        - UseAwsSesInbox
         - S3ReadPolicy:
             BucketName:
               Ref: BucketName
@@ -152,8 +187,11 @@ Resources:
       CodeUri: s3://cyruswong-sam-repo/2170956637120acbcdb3644552705e12
       Policies:
       - AmazonDynamoDBFullAccess
+      - S3ReadPolicy:
+          BucketName:
+            Ref: ClassroomBucket
       - Fn::If:
-        - HasSnsTopic
+        - UseAwsSesInbox
         - S3ReadPolicy:
             BucketName:
               Ref: BucketName
@@ -177,6 +215,7 @@ Resources:
     Type: AWS::SQS::Queue
   CreateClassroomSubscription:
     Type: AWS::SNS::Subscription
+    Condition: UseAwsSesInbox
     Properties:
       TopicArn:
         Ref: SNSTopic
@@ -196,7 +235,7 @@ Resources:
           - Ref: TeacherEmailDomains
   CreateClassroomQueuePolicy:
     Type: AWS::SQS::QueuePolicy
-    Condition: HasSnsTopic
+    Condition: UseAwsSesInbox
     Properties:
       Queues:
       - Ref: CreateClassroomQueue
@@ -224,8 +263,11 @@ Resources:
       CodeUri: s3://cyruswong-sam-repo/1922ec3abbb091283112307b9d6fdf12
       Policies:
       - AmazonDynamoDBFullAccess
+      - S3ReadPolicy:
+          BucketName:
+            Ref: ClassroomBucket
       - Fn::If:
-        - HasSnsTopic
+        - UseAwsSesInbox
         - S3ReadPolicy:
             BucketName:
               Ref: BucketName
@@ -254,6 +296,9 @@ Resources:
       CodeUri: s3://cyruswong-sam-repo/dbf3cd6b77f97b644ae4228527feb22c
       Policies:
       - AmazonDynamoDBFullAccess
+      - S3ReadPolicy:
+          BucketName:
+            Ref: ClassroomBucket
       - Version: '2012-10-17'
         Statement:
         - Effect: Allow
@@ -273,6 +318,7 @@ Resources:
     Type: AWS::SQS::Queue
   DeleteClassroomSubscription:
     Type: AWS::SNS::Subscription
+    Condition: UseAwsSesInbox
     Properties:
       TopicArn:
         Ref: SNSTopic
@@ -292,7 +338,7 @@ Resources:
           - Ref: TeacherEmailDomains
   DeleteClassroomQueuePolicy:
     Type: AWS::SQS::QueuePolicy
-    Condition: HasSnsTopic
+    Condition: UseAwsSesInbox
     Properties:
       Queues:
       - Ref: DeleteClassroomQueue
@@ -320,8 +366,11 @@ Resources:
       CodeUri: s3://cyruswong-sam-repo/73489ac82d3cdee99b6affd8ae859446
       Policies:
       - AmazonDynamoDBFullAccess
+      - S3ReadPolicy:
+          BucketName:
+            Ref: ClassroomBucket
       - Fn::If:
-        - HasSnsTopic
+        - UseAwsSesInbox
         - S3ReadPolicy:
             BucketName:
               Ref: BucketName
@@ -367,7 +416,7 @@ Resources:
           KeyType: RANGE
         Projection:
           ProjectionType: ALL
-  keyPairBucket:
+  ClassroomBucket:
     Type: AWS::S3::Bucket
 Outputs:
   SetupStudentAccountFunction:
@@ -376,15 +425,18 @@ Outputs:
       Fn::GetAtt:
       - SetupStudentAccountFunction
       - Arn
-  CreateStudentStackFunction:
-    Description: CreateStudentStackFunction
+  CreateClassroomFunction:
+    Description: CreateClassroomFunction
     Value:
       Fn::GetAtt:
-      - CreateStudentStackFunction
+      - CreateClassroomFunction
       - Arn
-  DeleteStudentStackFunction:
-    Description: DeleteStudentStackFunction
+  DeleteClassroomFunction:
+    Description: DeleteClassroomFunction
     Value:
       Fn::GetAtt:
-      - DeleteStudentStackFunction
+      - DeleteClassroomFunction
       - Arn
+  ClassroomBucket:
+    Value:
+      Ref: ClassroomBucket

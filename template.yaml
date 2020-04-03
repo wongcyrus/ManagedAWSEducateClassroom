@@ -366,3 +366,5 @@ Outputs:
   DeleteClassroomFunction:
     Description: "DeleteClassroomFunction"
     Value: !GetAtt DeleteClassroomFunction.Arn
+  ClassroomBucket:
+    Value: !Ref ClassroomBucket

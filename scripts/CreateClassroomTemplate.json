@@ -1,0 +1,7 @@
+{
+    "classroomNumber": "1",
+    "stackName": "Lab",
+    "bucket": "###bucket###",
+    "templateKey": "cloud9/template.yaml",
+    "parametersKey": "cloud9/parameters.json"
+}
