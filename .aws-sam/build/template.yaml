@@ -42,6 +42,11 @@ Conditions:
     - Fn::Equals:
       - Ref: SNSTopic
       - ''
+  HasAdminUser:
+    Fn::Not:
+    - Fn::Equals:
+      - Ref: Password
+      - ''
 Resources:
   CommonLayer:
     Type: AWS::Serverless::LayerVersion
@@ -149,17 +154,6 @@ Resources:
         - Effect: Allow
           Action: sts:AssumeRole
           Resource: arn:aws:iam::*:role/crossaccountteacher
-  DeleteStudentStackFunction:
-    Type: AWS::Serverless::Function
-    Properties:
-      CodeUri: DeleteStudentStackFunction
-      Policies:
-      - AmazonDynamoDBFullAccess
-      - Version: '2012-10-17'
-        Statement:
-        - Effect: Allow
-          Action: sts:AssumeRole
-          Resource: arn:aws:iam::*:role/crossaccountteacher
   CreateClassroomQueue:
     Type: AWS::SQS::Queue
     Properties:
@@ -245,6 +239,102 @@ Resources:
               - CreateClassroomQueue
               - Arn
             BatchSize: 1
+  DeleteStudentStackFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: DeleteStudentStackFunction
+      Policies:
+      - AmazonDynamoDBFullAccess
+      - Version: '2012-10-17'
+        Statement:
+        - Effect: Allow
+          Action: sts:AssumeRole
+          Resource: arn:aws:iam::*:role/crossaccountteacher
+  DeleteClassroomQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      VisibilityTimeout: 180
+      RedrivePolicy:
+        deadLetterTargetArn:
+          Fn::GetAtt:
+          - DeleteClassroomDeadLetterQueue
+          - Arn
+        maxReceiveCount: 3
+  DeleteClassroomDeadLetterQueue:
+    Type: AWS::SQS::Queue
+  DeleteClassroomSubscription:
+    Type: AWS::SNS::Subscription
+    Properties:
+      TopicArn:
+        Ref: SNSTopic
+      Endpoint:
+        Fn::GetAtt:
+        - DeleteClassroomQueue
+        - Arn
+      Protocol: sqs
+      FilterPolicy:
+        receiver:
+        - Ref: TeacherCommandEmail
+        intentName:
+        - DeleteClassroomIntent
+        senderEmailDomain:
+          Fn::Split:
+          - ','
+          - Ref: TeacherEmailDomains
+  DeleteClassroomQueuePolicy:
+    Type: AWS::SQS::QueuePolicy
+    Condition: HasSnsTopic
+    Properties:
+      Queues:
+      - Ref: DeleteClassroomQueue
+      PolicyDocument:
+        Version: '2008-10-17'
+        Id: PublicationPolicy
+        Statement:
+        - Sid: Allow-SNS-SendMessage
+          Effect: Allow
+          Principal:
+            AWS: '*'
+          Action:
+          - sqs:SendMessage
+          Resource:
+            Fn::GetAtt:
+            - DeleteClassroomQueue
+            - Arn
+          Condition:
+            ArnEquals:
+              aws:SourceArn:
+                Ref: SNSTopic
+  DeleteClassroomFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: DeleteClassroomFunction
+      Policies:
+      - AmazonDynamoDBFullAccess
+      - Fn::If:
+        - HasSnsTopic
+        - S3ReadPolicy:
+            BucketName:
+              Ref: BucketName
+        - Ref: AWS::NoValue
+      - LambdaInvokePolicy:
+          FunctionName:
+            Ref: DeleteStudentStackFunction
+      Environment:
+        Variables:
+          DeleteStudentStackFunctionArn:
+            Fn::GetAtt:
+            - DeleteStudentStackFunction
+            - Arn
+      Events:
+        SQSEvent:
+          Type: SQS
+          Properties:
+            Queue:
+              Fn::GetAtt:
+              - DeleteClassroomQueue
+              - Arn
+            BatchSize: 1
   StudentAccountTable:
     Type: AWS::DynamoDB::Table
     Properties:
@@ -270,6 +360,7 @@ Resources:
           ProjectionType: ALL
   TeacherUser:
     Type: AWS::IAM::User
+    Condition: HasAdminUser
     Properties:
       UserName: teacher
       LoginProfile:
@@ -297,6 +388,7 @@ Resources:
               - Arn
   TeacherUserKey:
     Type: AWS::IAM::AccessKey
+    Condition: HasAdminUser
     Properties:
       UserName:
         Ref: TeacherUser
@@ -325,10 +417,12 @@ Outputs:
       - DeleteStudentStackFunction
       - Arn
   AccessKey:
+    Condition: HasAdminUser
     Value:
       Ref: TeacherUserKey
     Description: AWSAccessKeyId of Teacher User
   SecretKey:
+    Condition: HasAdminUser
     Value:
       Fn::GetAtt:
       - TeacherUserKey

@@ -54,6 +54,7 @@ Resources:
       OwnerArn: !Ref OwnerArn
       AutomaticStopTimeMinutes: !Ref 'AutoHibernateTimeout'
       InstanceType: !Ref 'EC2InstanceType'
+
 Outputs:
   Cloud9URL:
     Description: Cloud9 Environment

@@ -69,13 +69,17 @@ const initStudentAccount = async(classroomNumber, email, rawKey) => {
 
 
 exports.lambdaHandler = async(event, context) => {
+    let { classroomNumber, email, rawKey } = event;
     console.log(event);
     if (event.Records) {
         let { message, emailBody } = await common.getMessage(event);
         console.log(message);
         console.log(emailBody);
-        await initStudentAccount(message.slots.classroomNumber, message.sender, emailBody);
+        
+        classroomNumber = message.slots.classroomNumber;
+        email = message.sender;
+        rawKey = emailBody;
     }
-    await initStudentAccount(event.classroomNumber, event.email, event.key);
+    await initStudentAccount(classroomNumber, email, rawKey);
     return "OK";
 };
