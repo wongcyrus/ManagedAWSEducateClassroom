@@ -1,7 +1,0 @@
-{
-    "classroomNumber": "1",
-    "stackName": "Lab",
-    "bucket": "serverlessrepo-managed-aws-educat-classroombucket-180q0rw579eeu",
-    "templateKey": "cloud9/template.yaml",
-    "parametersKey": "cloud9/parameters.json"
-}
