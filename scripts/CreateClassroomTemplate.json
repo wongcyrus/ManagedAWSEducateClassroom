@@ -1,5 +1,5 @@
 {
-    "classroomNumber": "1",
+    "classroomName": "My AWS Educate Class",
     "stackName": "Lab",
     "bucket": "###bucket###",
     "templateKey": "cloud9/template.yaml",

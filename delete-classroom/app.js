@@ -7,31 +7,31 @@ const studentAccountTable = process.env.StudentAccountTable;
 const deleteStudentStackFunctionArn = process.env.DeleteStudentStackFunctionArn;
 
 exports.lambdaHandler = async(event, context) => {
-    let { classroomNumber, stackName } = event;
+    console.log(event);
+    let { classroomName, stackName } = event;
 
     if (event.Records) {
         let { message, emailBody } = await common.getMessage(event);
         stackName = emailBody.split('\n')[0].trim();
-        classroomNumber = message.slots.classroomNumber;
+        classroomName = message.slots.classroomName;
     }
 
-    classroomNumber = parseInt(classroomNumber, 10);
     let params = {
         TableName: studentAccountTable,
-        KeyConditionExpression: 'classroomNumber = :hkey',
+        KeyConditionExpression: 'classroomName = :hkey',
         ExpressionAttributeValues: {
-            ':hkey': classroomNumber
+            ':hkey': classroomName
         }
     };
 
     let students = await dynamo.query(params).promise();
     console.log(students);
-    console.log(classroomNumber, stackName);
+    console.log(classroomName, stackName);
 
     const createStack = async email => {
         let params = {
             FunctionName: deleteStudentStackFunctionArn,
-            InvokeArgs: JSON.stringify({ classroomNumber, stackName, email })
+            InvokeArgs: JSON.stringify({ classroomName, stackName, email })
         };
         return await lambda.invokeAsync(params).promise();
     };

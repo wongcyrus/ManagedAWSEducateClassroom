@@ -7,36 +7,38 @@ const studentAccountTable = process.env.StudentAccountTable;
 const createStudentStackFunctionArn = process.env.CreateStudentStackFunctionArn;
 
 exports.lambdaHandler = async(event, context) => {
-    let { classroomNumber, stackName, bucket, templateKey, parametersKey } = event;
+    console.log(event);
+    let { classroomName, stackName, bucket, templateKey, parametersKey } = event;
 
     if (event.Records) {
         let { message, emailBody } = await common.getMessage(event);
 
         bucket = message.inboxBucket;
         stackName = emailBody.split('\n')[0].trim();
-        classroomNumber = message.slots.classroomNumber;
+        classroomName = message.slots.classroomName;
 
         templateKey = message.attachmentKeys.find(c => c.toLocaleLowerCase().endsWith(".yaml"));
         parametersKey = message.attachmentKeys.find(c => c.toLocaleLowerCase().endsWith(".json"));
     }
 
-    classroomNumber = parseInt(classroomNumber, 10);
+    console.log(classroomName, stackName, templateKey, parametersKey);
+    
     let params = {
         TableName: studentAccountTable,
-        KeyConditionExpression: 'classroomNumber = :hkey',
+        KeyConditionExpression: 'classroomName = :hkey',
         ExpressionAttributeValues: {
-            ':hkey': classroomNumber
+            ':hkey': classroomName
         }
     };
 
     let students = await dynamo.query(params).promise();
     console.log(students);
-    console.log(classroomNumber, stackName, templateKey, parametersKey);
+
 
     const createStack = async email => {
         let params = {
             FunctionName: createStudentStackFunctionArn,
-            InvokeArgs: JSON.stringify({ classroomNumber, stackName, email, bucket, templateKey, parametersKey })
+            InvokeArgs: JSON.stringify({ classroomName, stackName, email, bucket, templateKey, parametersKey })
         };
         return await lambda.invokeAsync(params).promise();
     };

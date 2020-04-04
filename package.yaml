@@ -171,7 +171,7 @@ Resources:
         Statement:
         - Effect: Allow
           Action: sts:AssumeRole
-          Resource: arn:aws:iam::*:role/crossaccountteacher
+          Resource: arn:aws:iam::*:role/crossaccountteacher*
       Events:
         SQSEvent:
           Type: SQS
@@ -200,7 +200,7 @@ Resources:
         Statement:
         - Effect: Allow
           Action: sts:AssumeRole
-          Resource: arn:aws:iam::*:role/crossaccountteacher
+          Resource: arn:aws:iam::*:role/crossaccountteacher*
   CreateClassroomQueue:
     Type: AWS::SQS::Queue
     Properties:
@@ -303,7 +303,7 @@ Resources:
         Statement:
         - Effect: Allow
           Action: sts:AssumeRole
-          Resource: arn:aws:iam::*:role/crossaccountteacher
+          Resource: arn:aws:iam::*:role/crossaccountteacher*
   DeleteClassroomQueue:
     Type: AWS::SQS::Queue
     Properties:
@@ -398,12 +398,12 @@ Resources:
     Properties:
       BillingMode: PAY_PER_REQUEST
       AttributeDefinitions:
-      - AttributeName: classroomNumber
+      - AttributeName: classroomName
         AttributeType: N
       - AttributeName: email
         AttributeType: S
       KeySchema:
-      - AttributeName: classroomNumber
+      - AttributeName: classroomName
         KeyType: HASH
       - AttributeName: email
         KeyType: RANGE
@@ -412,7 +412,7 @@ Resources:
         KeySchema:
         - AttributeName: email
           KeyType: HASH
-        - AttributeName: classroomNumber
+        - AttributeName: classroomName
           KeyType: RANGE
         Projection:
           ProjectionType: ALL

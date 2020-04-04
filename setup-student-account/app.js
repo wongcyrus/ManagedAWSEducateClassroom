@@ -1,7 +1,6 @@
 const AWS = require('aws-sdk');
 const fs = require('fs');
 const studentAccountTable = process.env.StudentAccountTable;
-const keyPairBucket = process.env.keyPairBucket;
 
 const dynamo = new AWS.DynamoDB.DocumentClient();
 const common = require('/opt/common');
@@ -16,9 +15,9 @@ const extractKeys = rawKey => {
     return { accessKeyId, secretAccessKey, sessionToken };
 };
 
-const initStudentAccount = async(classroomNumber, email, rawKey) => {
+const initStudentAccount = async(classroomName, email, rawKey) => {
     let sts = new AWS.STS();
-    const { Account } = await sts.getCallerIdentity().promise();
+    const account = (await sts.getCallerIdentity().promise()).Account;
     const { accessKeyId, secretAccessKey, sessionToken } = extractKeys(rawKey);
 
     sts = new AWS.STS({ accessKeyId, secretAccessKey, sessionToken });
@@ -31,13 +30,13 @@ const initStudentAccount = async(classroomNumber, email, rawKey) => {
         region: "us-east-1"
     });
     let params = {
-        StackName: 'ManagedAWSEduateClassroom',
+        StackName: 'ManagedAWSEduateClassroom-' + account,
         Capabilities: [
             "CAPABILITY_IAM", "CAPABILITY_NAMED_IAM",
         ],
         Parameters: [{
             ParameterKey: 'TeacherAccountId',
-            ParameterValue: Account
+            ParameterValue: account
         }, {
             ParameterKey: 'StudentEmail',
             ParameterValue: email
@@ -47,14 +46,14 @@ const initStudentAccount = async(classroomNumber, email, rawKey) => {
     let response = await cloudformation.createStack(params).promise();
 
     params = {
-        StackName: 'ManagedAWSEduateClassroom'
+        StackName: 'ManagedAWSEduateClassroom-' + account
     };
     await cloudformation.waitFor('stackCreateComplete', params).promise();
     response = await cloudformation.describeStacks(params).promise();
     let labStackCreationCompleteTopic = response.Stacks[0].Outputs
         .find(c => c.OutputKey === "SNSTopicCloudFormation").OutputValue;
 
-    console.log(classroomNumber, email, rawKey);
+    console.log(classroomName, email, rawKey);
 
 
     const ec2 = new AWS.EC2({
@@ -66,13 +65,13 @@ const initStudentAccount = async(classroomNumber, email, rawKey) => {
 
     try {
         await ec2.deleteKeyPair({
-            KeyName: classroomNumber + "-" + email
+            KeyName: classroomName + "-" + account + "-" + email
         }).promise();
     }
     catch (err) { console.error(err); }
 
     let keyResponse = await ec2.createKeyPair({
-        KeyName: classroomNumber + "-" + email
+        KeyName: classroomName + "-" + account + "-" + email
     }).promise();
 
     let keyPair = JSON.stringify(keyResponse);
@@ -80,7 +79,7 @@ const initStudentAccount = async(classroomNumber, email, rawKey) => {
     let result = await dynamo.put({
         "TableName": studentAccountTable,
         "Item": {
-            "classroomNumber": parseInt(classroomNumber, 10),
+            "classroomName": classroomName,
             "email": email,
             "studentAccountArn": studentAcocuntIdentity.Arn,
             "awsAccountId": studentAcocuntIdentity.Account,
@@ -93,17 +92,17 @@ const initStudentAccount = async(classroomNumber, email, rawKey) => {
 
 
 exports.lambdaHandler = async(event, context) => {
-    let { classroomNumber, email, rawKey } = event;
+    let { classroomName, email, rawKey } = event;
     console.log(event);
     if (event.Records) {
         let { message, emailBody } = await common.getMessage(event);
         console.log(message);
         console.log(emailBody);
 
-        classroomNumber = message.slots.classroomNumber;
+        classroomName = message.slots.classroomName;
         email = message.sender;
         rawKey = emailBody;
     }
-    await initStudentAccount(classroomNumber, email, rawKey);
+    await initStudentAccount(classroomName, email, rawKey);
     return "OK";
 };

@@ -24,18 +24,19 @@ const deleteStudentLabStack = async(param) => {
 
 exports.lambdaHandler = async(event, context) => {
 
-    let { stackName, classroomNumber, email } = event;
+    let { stackName, classroomName, email } = event;
     let studentAccount = await dynamo.get({
         TableName: studentAccountTable,
         Key: {
-            'classroomNumber': classroomNumber,
+            'classroomName': classroomName,
             'email': email
         }
     }).promise();
     console.log(studentAccount);
+    const awsAccountId = context.invokedFunctionArn.split(":")[4];
     const param = {
         stackName: stackName,
-        roleArn: `arn:aws:iam::${studentAccount.Item.awsAccountId}:role/crossaccountteacher`,
+        roleArn: `arn:aws:iam::${studentAccount.Item.awsAccountId}:role/crossaccountteacher${awsAccountId}`,
     };
     await deleteStudentLabStack(param);
     return "OK";

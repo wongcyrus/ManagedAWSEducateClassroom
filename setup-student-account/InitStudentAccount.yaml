@@ -9,7 +9,7 @@ Resources:
   StudentAccountRole:
     Type: AWS::IAM::Role
     Properties:
-      RoleName: crossaccountteacher
+      RoleName:  !Sub 'crossaccountteacher${TeacherAccountId}'
       AssumeRolePolicyDocument:
         Version: '2012-10-17'
         Statement:
@@ -30,8 +30,8 @@ Resources:
   LabStackCreationCompleteTopic:
     Type: 'AWS::SNS::Topic'
     Properties: 
-      DisplayName: "LabStackCreationCompleteTopic"
-      TopicName: "LabStackCreationCompleteTopic"
+      DisplayName: !Sub 'LabStackCreationCompleteTopic${TeacherAccountId}'
+      TopicName: !Sub 'LabStackCreationCompleteTopic${TeacherAccountId}'
     
   StudentSubscription:
     Type: AWS::SNS::Subscription
@@ -85,7 +85,6 @@ Resources:
   LambdaFunction:
     Type: "AWS::Lambda::Function"
     Properties:
-      FunctionName: "cloudformation-notifications-lambda"
       Description: "Forward CloudFormation notifications to SNS topic"
       Handler: "index.handler"
       Role: !GetAtt "LambdaRole.Arn"

@@ -32,12 +32,12 @@ const createStudentLabStack = async(param) => {
 
 exports.lambdaHandler = async(event, context) => {
     console.log(event);
-    let { classroomNumber, stackName, email, bucket, templateKey, parametersKey } = event;
+    let { classroomName, stackName, email, bucket, templateKey, parametersKey } = event;
 
     let studentAccount = await dynamo.get({
         TableName: studentAccountTable,
         Key: {
-            'classroomNumber': classroomNumber,
+            'classroomName': classroomName,
             'email': email
         }
     }).promise();
@@ -57,14 +57,15 @@ exports.lambdaHandler = async(event, context) => {
     };
 
     replaceValue("###studentAccountArn###", studentAccount.Item.studentAccountArn);
-    replaceValue("###keyPairName###", classroomNumber + "-" + email);
+    replaceValue("###keyPairName###", keyPair.KeyName);
     replaceValue("###KeyMaterial###", keyPair.KeyMaterial);
     console.log(parameters);
 
+    const awsAccountId = context.invokedFunctionArn.split(":")[4];
     const param = {
         stackName,
         labStackCreationCompleteTopic: studentAccount.Item.labStackCreationCompleteTopic,
-        roleArn: `arn:aws:iam::${studentAccount.Item.awsAccountId}:role/crossaccountteacher`,
+        roleArn: `arn:aws:iam::${studentAccount.Item.awsAccountId}:role/crossaccountteacher${awsAccountId}`,
         templateBody: await common.getS3File(bucket, templateKey),
         parameters: parameters
     };
