@@ -1,5 +1,5 @@
 {
-    "classroomNumber": "1",
+    "classroomName": "My AWS Educate Class",
     "email": "cywong@vtc.edu.hk",
     "rawKey": "[default]aws_access_key_id=XXXXXXXXXXXXXXaws_secret_access_key=YYYYYYYYYYYYCaws_session_token=YYYYYYYYYYY"
 }

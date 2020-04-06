@@ -11,7 +11,12 @@ const extractKeys = rawKey => {
     const secretKeyStartIndex = rawKey.indexOf("aws_secret_access_key=") + "aws_secret_access_key=".length;
     const secretAccessKey = rawKey.substring(secretKeyStartIndex, rawKey.indexOf("aws_session_token=")).replace(/(\r\n|\n|\r)/gm, "");
     const secretSessionTokenIndex = rawKey.indexOf("aws_session_token=") + "aws_session_token=".length;
-    const sessionToken = rawKey.substring(secretSessionTokenIndex, secretSessionTokenIndex + 368).replace(/(\r\n|\n|\r)/gm, "");
+
+    let secretSessionTokenEndIndex = rawKey.indexOf("\r", secretSessionTokenIndex);
+    if (secretSessionTokenEndIndex === -1) secretSessionTokenEndIndex = rawKey.length;
+    
+    const sessionToken = rawKey.substring(secretSessionTokenIndex, secretSessionTokenEndIndex).replace(/(\r\n|\n|\r)/gm, "");
+    console.log({ accessKeyId, secretAccessKey, sessionToken });
     return { accessKeyId, secretAccessKey, sessionToken };
 };
 

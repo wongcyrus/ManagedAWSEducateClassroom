@@ -356,6 +356,21 @@ Resources:
   ClassroomBucket:
     Type: AWS::S3::Bucket
     
+# WebUI for student registration.
+  HttpApiFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: web-ui/
+      Policies:
+        - LambdaInvokePolicy:
+            FunctionName: !Ref SetupStudentAccountFunction
+      Environment:
+        Variables:
+          SetupStudentAccountFunction: !GetAtt SetupStudentAccountFunction.Arn  
+      Events:
+        ExplicitApi: # warning: creates a public endpoint
+          Type: HttpApi
+
 Outputs:
   SetupStudentAccountFunction:
     Description: "SetupStudentAccountFunction"
@@ -368,3 +383,6 @@ Outputs:
     Value: !GetAtt DeleteClassroomFunction.Arn
   ClassroomBucket:
     Value: !Ref ClassroomBucket
+  HttpApiUrl:
+    Description: URL of your API endpoint
+    Value: !Sub 'https://${ServerlessHttpApi}.execute-api.${AWS::Region}.${AWS::URLSuffix}/?classroomName=ChangeToYourClassName'
