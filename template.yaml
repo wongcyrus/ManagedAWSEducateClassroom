@@ -357,7 +357,10 @@ Resources:
     Type: AWS::S3::Bucket
     
 # WebUI for student registration.
-  HttpApiFunction:
+  HttpApi:
+    Type: AWS::Serverless::HttpApi
+    
+  SetupStudentAccountWebUiFunction:
     Type: AWS::Serverless::Function
     Properties:
       CodeUri: web-ui/
@@ -368,8 +371,26 @@ Resources:
         Variables:
           SetupStudentAccountFunction: !GetAtt SetupStudentAccountFunction.Arn  
       Events:
-        ExplicitApi: # warning: creates a public endpoint
+        ExplicitApi:
           Type: HttpApi
+          Properties:
+            ApiId: !Ref HttpApi
+            Method: GET
+            Path: /
+
+  GetRdpFilFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: web-ui/
+      Handler: getRdp.lambdaHandler
+      Events:
+        ExplicitApi:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref HttpApi
+            Method: GET
+            Path: /rdp
+
 
 Outputs:
   SetupStudentAccountFunction:
@@ -385,4 +406,4 @@ Outputs:
     Value: !Ref ClassroomBucket
   HttpApiUrl:
     Description: URL of your API endpoint
-    Value: !Sub 'https://${ServerlessHttpApi}.execute-api.${AWS::Region}.${AWS::URLSuffix}/?classroomName=ChangeToYourClassName'
+    Value: !Sub 'https://${HttpApi}.execute-api.${AWS::Region}.${AWS::URLSuffix}/?classroomName=ChangeToYourClassName'

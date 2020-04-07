@@ -92,7 +92,7 @@ const initStudentAccount = async(classroomName, email, rawKey) => {
             "keyPair": keyPair
         }
     }).promise();
-    console.log(result);
+    return result;
 };
 
 
@@ -108,6 +108,5 @@ exports.lambdaHandler = async(event, context) => {
         email = message.sender;
         rawKey = emailBody;
     }
-    await initStudentAccount(classroomName, email, rawKey);
-    return "OK";
+    return initStudentAccount(classroomName, email, rawKey);
 };

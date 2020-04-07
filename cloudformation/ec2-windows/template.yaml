@@ -1,0 +1,226 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: AWS Cloud9 Environment
+Parameters:
+  InstanceType:
+    Description: EC2 instance type on which IDE runs
+    Type:        String
+    Default:     t2.micro
+  KeyPairName:
+    Type: String
+  KeyMaterial:
+    Type: String
+  AmiId:
+    Type:  String
+  UserData:
+    Type: String
+    Default: ""
+Resources:
+  EC2Instance:
+    Type: AWS::EC2::Instance
+    Metadata:
+      AWS::Cloudformation::Init:
+        configSets:
+          config:
+            - setup
+            - finalize
+        setup:
+          files:
+            c:\cfn\cfn-hup.conf:
+              content: !Sub |
+                [main]
+                stack=${AWS::StackId}
+                region=${AWS::Region}
+            c:\cfn\hooks.d\cfn-auto-reloader.conf:
+              content: !Sub |
+                [cfn-auto-reloader-hook]
+                triggers=post.update
+                path=Resources.BastionServer.Metadata.AWS::CloudFormation::Init
+                action=cfn-init.exe -v -s ${AWS::StackId} -r EC2Instance --region ${AWS::Region}
+          services:
+            windows:
+              cfn-hup:
+                enabled: 'true'
+                ensureRunning: 'true'
+                files:
+                  - c:\cfn\cfn-hup.conf
+                  - c:\cfn\hooks.d\cfn-auto-reloader.conf
+        finalize:
+            1-signal-success:
+              command: powershell.exe -Command "Write-AWSQuickStartStatus"
+              waitAfterCompletion: '0'      
+              
+    Properties:
+      InstanceType: !Ref InstanceType
+      SecurityGroups: [!Ref InstanceSecurityGroup]
+      KeyName: !Ref KeyPairName
+      ImageId: !Ref AmiId
+      UserData:
+        Fn::Base64:
+          !Sub
+            - |
+              <script>
+                ${UserData}
+                
+                cfn-init.exe -v -s ${StackName} -r EC2Instance --region ${Region}
+                cfn-signal.exe -e %ERRORLEVEL% ${WaitHandleHash} 
+              </script>
+            -   
+              WaitHandleHash:
+                  Fn::Base64: !Ref WaitHandle
+              StackName: !Ref AWS::StackName
+              Region: !Ref AWS::Region
+              UserData: !Ref UserData
+
+  InstanceSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Enable SSH access via port 22
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+          CidrIp: "0.0.0.0/0"
+        - IpProtocol: tcp
+          FromPort: 3389
+          ToPort: 3389
+          CidrIp: "0.0.0.0/0"  
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: "0.0.0.0/0"
+
+  WaitHandle: 
+    Type: AWS::CloudFormation::WaitConditionHandle
+  WaitCondition: 
+    Type: AWS::CloudFormation::WaitCondition
+    DependsOn: "EC2Instance"
+    Properties: 
+      Handle: 
+        Ref: "WaitHandle"
+      Timeout: "300"
+      Count: 1
+
+  GetPasswordCustomResource:
+    Type: Custom::CustomResource
+    DependsOn: WaitCondition
+    Properties:
+      ServiceToken: !GetAtt 'GetPasswordResourceFunction.Arn'
+      
+      
+  GetPasswordResourceRole:
+    Type: AWS::IAM::Role
+    Properties:
+        AssumeRolePolicyDocument:
+          Version: '2012-10-17'
+          Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+        Policies:
+          -
+            PolicyName: "IAMPassRolePermissions"
+            PolicyDocument:
+              Version: '2012-10-17'
+              Statement:
+                -
+                  Effect: Allow
+                  Action: iam:PassRole
+                  Resource: "*"
+          -
+            PolicyName: "Ec2Permissions"
+            PolicyDocument:
+              Version: '2012-10-17'
+              Statement:
+                -
+                  Effect: Allow
+                  Action: ec2:*
+                  Resource: "*"
+          -
+            PolicyName: "LambdaPermissions"
+            PolicyDocument:
+              Version: '2012-10-17'
+              Statement:
+                -
+                  Effect: Allow
+                  Action: logs:CreateLogGroup
+                  Resource:
+                    - !Sub 'arn:aws:logs:${AWS::Region}:${AWS::AccountId}:*'
+                -
+                  Effect: Allow
+                  Action:
+                    - logs:CreateLogStream
+                    - logs:PutLogEvents
+                  Resource:
+                    - !Sub 'arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/*'
+
+
+  GetPasswordResourceFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      Description: Custom CloudFormation resource for managing Stack Sets
+      Role: !GetAtt GetPasswordResourceRole.Arn
+      Handler: "index.handler"
+      Role: !GetAtt "GetPasswordResourceRole.Arn"
+      Environment:
+        Variables:
+          EC2InstanceId: !Ref "EC2Instance"
+      Code:
+        ZipFile: |
+          const AWS = require('aws-sdk');
+          const response = require('cfn-response');
+          const ec2 = new AWS.EC2();
+          const ec2InstanceId = process.env.EC2InstanceId;
+          exports.handler = (event, context) => {
+            console.log('REQUEST RECEIVED:\n' + JSON.stringify(event));
+            if (event.RequestType === 'Create') {
+              console.log('CREATE!');
+              let params = {
+                InstanceId: ec2InstanceId
+              };
+              ec2.waitFor('passwordDataAvailable', params, (err, data) => {
+                if (err) response.send(event, context, response.FAILED, { 'PasswordData': "" });
+                else  response.send(event, context, response.SUCCESS, { 'PasswordData': data.PasswordData });
+              });
+            } else if (event.RequestType === 'Update') {
+              console.log('UDPATE!');
+              // Put your custom update logic here
+              response.send(event, context, response.SUCCESS, { 'PasswordData': "" });
+            } else if (event.RequestType === 'Delete') {
+              console.log('DELETE!');
+              // Put your custom delete logic here
+              response.send(event, context, response.SUCCESS, { 'PasswordData': "" });
+            } else {
+              console.log('FAILED!');
+              response.send(event, context, response.FAILED, { 'PasswordData': "" });
+            }
+          };
+      Runtime: "nodejs12.x"
+      Timeout: "600"
+
+  GetPasswordResourceLogGroup:
+    DependsOn: GetPasswordResourceFunction
+    Type: "AWS::Logs::LogGroup"
+    Properties:
+      LogGroupName: !Sub '/aws/lambda/${GetPasswordResourceFunction}'
+      RetentionInDays: 7
+
+        
+Outputs:
+  KeyMaterial:
+    Value: !Ref KeyMaterial
+  InstanceId:
+    Description: InstanceId of the newly created EC2 instance
+    Value: !Ref EC2Instance
+  AZ:
+    Description: Availability Zone of the newly created EC2 instance
+    Value: !GetAtt [EC2Instance, AvailabilityZone]
+  PublicDNS:
+    Description: Public DNSName of the newly created EC2 instance
+    Value: !GetAtt [EC2Instance, PublicDnsName]
+  PublicIP:
+    Description: Public IP address of the newly created EC2 instance
+    Value: !GetAtt [EC2Instance, PublicIp]
+  PasswordData:
+    Description: The message from the custom resource.
+    Value: !GetAtt GetPasswordCustomResource.PasswordData

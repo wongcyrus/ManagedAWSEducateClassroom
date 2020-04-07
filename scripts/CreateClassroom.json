@@ -1,0 +1,7 @@
+{
+    "classroomName": "Lab",
+    "stackName": "Lab9",
+    "bucket": "managed-aws-educate-classroom-classroombucket-1b15xv6utt82f",
+    "templateKey": "ec2-windows/template.yaml",
+    "parametersKey": "ec2-windows/parameters.json"
+}
