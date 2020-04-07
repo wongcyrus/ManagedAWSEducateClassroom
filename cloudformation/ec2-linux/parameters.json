@@ -1,0 +1,21 @@
+[{
+    "ParameterKey": "AmiId",
+    "ParameterValue": "ami-09d496c26aa745869"
+  },
+  {
+    "ParameterKey": "InstanceType",
+    "ParameterValue": "t2.micro"
+  },
+  {
+    "ParameterKey": "KeyPairName",
+    "ParameterValue": "###keyPairName###"
+  },
+  {
+    "ParameterKey": "KeyMaterial",
+    "ParameterValue": "###KeyMaterial###"
+  },
+  {
+    "ParameterKey": "PemKeyFileUrl",
+    "ParameterValue": "###PemKeyFileUrl###"
+  }
+]

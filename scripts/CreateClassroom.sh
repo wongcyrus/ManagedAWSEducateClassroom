@@ -1,7 +1,7 @@
-CreateClassroomFunction=$(aws cloudformation describe-stacks --stack-name serverlessrepo-managed-aws-educate-classroom \
+CreateClassroomFunction=$(aws cloudformation describe-stacks --stack-name managed-aws-educate-classroom \
 --query 'Stacks[0].Outputs[?OutputKey==`CreateClassroomFunction`].OutputValue' --output text)
 
-ClassroomBucket=$(aws cloudformation describe-stacks --stack-name serverlessrepo-managed-aws-educate-classroom \
+ClassroomBucket=$(aws cloudformation describe-stacks --stack-name managed-aws-educate-classroom \
 --query 'Stacks[0].Outputs[?OutputKey==`ClassroomBucket`].OutputValue' --output text)
 
 sed "s/###bucket###/$ClassroomBucket/g" CreateClassroomTemplate.json > CreateClassroom.json

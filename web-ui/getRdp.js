@@ -1,36 +1,20 @@
 const AWS = require('aws-sdk');
-const querystring = require('querystring');
-process.env.PATH = process.env.PATH + ":/opt/awscli";
-
 
 exports.lambdaHandler = async(event, context) => {
-
+    const rdpTemplate=`
+auto connect:i:1
+full address:s:###PublicDNS###
+username:s:Administrator
+`;
     console.log(event);
 
-    const passwordData = event.queryStringParameters.passwordData;
-    const pem = event.queryStringParameters.pem;
- 
-    let password ="";
-
-    console.log("Password is", password);
-
+    const publicDNS = event.queryStringParameters.PublicDNS;
+    const rdpFile = rdpTemplate.replace("###PublicDNS###",publicDNS);
     return {
         "headers": {
-            "Content-Type": " text/html"
+            "Content-Type": " application/x-rdp"
         },
         "statusCode": 200,
-        "body": `
-<!DOCTYPE html>
-<html>
-    <head>
-      <title>Managed AWS Educate Classroom Student Account Registration - Completed</title>
-    </head>
-    <body>
-       RDP Password: ${password}
-    </body>
-</html>
-        `,
+        "body": rdpFile
     };
-
-
 };

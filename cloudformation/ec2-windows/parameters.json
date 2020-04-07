@@ -7,11 +7,19 @@
   "ParameterValue": "t2.micro"
  },
  {
+  "ParameterKey": "Password",
+  "ParameterValue": "P@ssw0rd12345678"
+ },
+ {
   "ParameterKey": "KeyPairName",
   "ParameterValue": "###keyPairName###"
  },
  {
   "ParameterKey": "KeyMaterial",
   "ParameterValue": "###KeyMaterial###"
+ },
+ {
+  "ParameterKey": "RdpFileUrl",
+  "ParameterValue": "###RdpFileUrl###"
  }
 ]

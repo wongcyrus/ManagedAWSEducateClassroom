@@ -2,6 +2,6 @@
     "classroomName": "My AWS Educate Class",
     "stackName": "Lab",
     "bucket": "###bucket###",
-    "templateKey": "ec2-windows/template.yaml",
-    "parametersKey": "ec2-windows/parameters.json"
+    "templateKey": "ec2-linux/template.yaml",
+    "parametersKey": "ec2-linux/parameters.json"
 }

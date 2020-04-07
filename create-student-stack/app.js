@@ -1,7 +1,11 @@
 const AWS = require('aws-sdk');
-const studentAccountTable = process.env.StudentAccountTable;
 const dynamo = new AWS.DynamoDB.DocumentClient();
 const common = require('/opt/common');
+
+const studentAccountTable = process.env.StudentAccountTable;
+const rdpFileUrl = process.env.RdpFileUrl;
+const pemKeyFileUrl = process.env.PemKeyFileUrl;
+
 
 const createStudentLabStack = async(param) => {
     const { roleArn, templateBody, parameters, stackName, labStackCreationCompleteTopic } = param;
@@ -59,6 +63,9 @@ exports.lambdaHandler = async(event, context) => {
     replaceValue("###studentAccountArn###", studentAccount.Item.studentAccountArn);
     replaceValue("###keyPairName###", keyPair.KeyName);
     replaceValue("###KeyMaterial###", keyPair.KeyMaterial);
+    replaceValue("###RdpFileUrl###", rdpFileUrl);
+    replaceValue("###PemKeyFileUrl###", pemKeyFileUrl);
+    
     console.log(parameters);
 
     const awsAccountId = context.invokedFunctionArn.split(":")[4];

@@ -14,6 +14,10 @@ Parameters:
   UserData:
     Type: String
     Default: ""
+  Password:
+    Type: String
+  RdpFileUrl:
+    Type: String
 Resources:
   EC2Instance:
     Type: AWS::EC2::Instance
@@ -59,8 +63,8 @@ Resources:
           !Sub
             - |
               <script>
+                net.exe user Administrator ${Password}
                 ${UserData}
-                
                 cfn-init.exe -v -s ${StackName} -r EC2Instance --region ${Region}
                 cfn-signal.exe -e %ERRORLEVEL% ${WaitHandleHash} 
               </script>
@@ -70,6 +74,7 @@ Resources:
               StackName: !Ref AWS::StackName
               Region: !Ref AWS::Region
               UserData: !Ref UserData
+              Password: !Ref Password
 
   InstanceSecurityGroup:
     Type: AWS::EC2::SecurityGroup
@@ -100,115 +105,8 @@ Resources:
       Timeout: "300"
       Count: 1
 
-  GetPasswordCustomResource:
-    Type: Custom::CustomResource
-    DependsOn: WaitCondition
-    Properties:
-      ServiceToken: !GetAtt 'GetPasswordResourceFunction.Arn'
-      
-      
-  GetPasswordResourceRole:
-    Type: AWS::IAM::Role
-    Properties:
-        AssumeRolePolicyDocument:
-          Version: '2012-10-17'
-          Statement:
-          - Effect: Allow
-            Principal:
-              Service: lambda.amazonaws.com
-            Action: sts:AssumeRole
-        Policies:
-          -
-            PolicyName: "IAMPassRolePermissions"
-            PolicyDocument:
-              Version: '2012-10-17'
-              Statement:
-                -
-                  Effect: Allow
-                  Action: iam:PassRole
-                  Resource: "*"
-          -
-            PolicyName: "Ec2Permissions"
-            PolicyDocument:
-              Version: '2012-10-17'
-              Statement:
-                -
-                  Effect: Allow
-                  Action: ec2:*
-                  Resource: "*"
-          -
-            PolicyName: "LambdaPermissions"
-            PolicyDocument:
-              Version: '2012-10-17'
-              Statement:
-                -
-                  Effect: Allow
-                  Action: logs:CreateLogGroup
-                  Resource:
-                    - !Sub 'arn:aws:logs:${AWS::Region}:${AWS::AccountId}:*'
-                -
-                  Effect: Allow
-                  Action:
-                    - logs:CreateLogStream
-                    - logs:PutLogEvents
-                  Resource:
-                    - !Sub 'arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/*'
-
-
-  GetPasswordResourceFunction:
-    Type: AWS::Lambda::Function
-    Properties:
-      Description: Custom CloudFormation resource for managing Stack Sets
-      Role: !GetAtt GetPasswordResourceRole.Arn
-      Handler: "index.handler"
-      Role: !GetAtt "GetPasswordResourceRole.Arn"
-      Environment:
-        Variables:
-          EC2InstanceId: !Ref "EC2Instance"
-      Code:
-        ZipFile: |
-          const AWS = require('aws-sdk');
-          const response = require('cfn-response');
-          const ec2 = new AWS.EC2();
-          const ec2InstanceId = process.env.EC2InstanceId;
-          exports.handler = (event, context) => {
-            console.log('REQUEST RECEIVED:\n' + JSON.stringify(event));
-            if (event.RequestType === 'Create') {
-              console.log('CREATE!');
-              let params = {
-                InstanceId: ec2InstanceId
-              };
-              ec2.waitFor('passwordDataAvailable', params, (err, data) => {
-                if (err) response.send(event, context, response.FAILED, { 'PasswordData': "" });
-                else  response.send(event, context, response.SUCCESS, { 'PasswordData': data.PasswordData });
-              });
-            } else if (event.RequestType === 'Update') {
-              console.log('UDPATE!');
-              // Put your custom update logic here
-              response.send(event, context, response.SUCCESS, { 'PasswordData': "" });
-            } else if (event.RequestType === 'Delete') {
-              console.log('DELETE!');
-              // Put your custom delete logic here
-              response.send(event, context, response.SUCCESS, { 'PasswordData': "" });
-            } else {
-              console.log('FAILED!');
-              response.send(event, context, response.FAILED, { 'PasswordData': "" });
-            }
-          };
-      Runtime: "nodejs12.x"
-      Timeout: "600"
-
-  GetPasswordResourceLogGroup:
-    DependsOn: GetPasswordResourceFunction
-    Type: "AWS::Logs::LogGroup"
-    Properties:
-      LogGroupName: !Sub '/aws/lambda/${GetPasswordResourceFunction}'
-      RetentionInDays: 7
-
         
 Outputs:
-  KeyMaterial:
-    Value: !Ref KeyMaterial
   InstanceId:
     Description: InstanceId of the newly created EC2 instance
     Value: !Ref EC2Instance
@@ -221,6 +119,13 @@ Outputs:
   PublicIP:
     Description: Public IP address of the newly created EC2 instance
     Value: !GetAtt [EC2Instance, PublicIp]
-  PasswordData:
+  Password:
     Description: The message from the custom resource.
-    Value: !GetAtt GetPasswordCustomResource.PasswordData
+    Value: !Ref Password
+  RdpFileUrl:
+    Value: !Sub
+            - '${RdpFileUrl}?PublicDNS=${PublicDNS}'
+            -   
+              RdpFileUrl: !Ref RdpFileUrl
+              PublicDNS: !GetAtt [EC2Instance, PublicDnsName]
+             

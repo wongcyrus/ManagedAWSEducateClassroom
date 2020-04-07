@@ -178,7 +178,11 @@ Resources:
             - Effect: Allow
               Action: "sts:AssumeRole"
               Resource: !Sub "arn:aws:iam::*:role/crossaccountteacher${AWS::AccountId}"
-              
+      Environment:
+        Variables:
+          RdpFileUrl: !Sub 'https://${HttpApi}.execute-api.${AWS::Region}.${AWS::URLSuffix}/rdp/login.rdp'
+          PemKeyFileUrl: !Sub 'https://${HttpApi}.execute-api.${AWS::Region}.${AWS::URLSuffix}/pem/key.pem'
+          
   CreateClassroomQueue:
     Type: AWS::SQS::Queue
     Properties:
@@ -378,7 +382,7 @@ Resources:
             Method: GET
             Path: /
 
-  GetRdpFilFunction:
+  GetRdpFileFunction:
     Type: AWS::Serverless::Function
     Properties:
       CodeUri: web-ui/
@@ -389,8 +393,20 @@ Resources:
           Properties:
             ApiId: !Ref HttpApi
             Method: GET
-            Path: /rdp
+            Path: /rdp/login.rdp
 
+  GetPemKeyFileFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: web-ui/
+      Handler: getPemKey.lambdaHandler
+      Events:
+        ExplicitApi:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref HttpApi
+            Method: GET
+            Path: /pem/key.pem
 
 Outputs:
   SetupStudentAccountFunction:
@@ -404,6 +420,6 @@ Outputs:
     Value: !GetAtt DeleteClassroomFunction.Arn
   ClassroomBucket:
     Value: !Ref ClassroomBucket
-  HttpApiUrl:
+  StudentRegistrationUrl:
     Description: URL of your API endpoint
     Value: !Sub 'https://${HttpApi}.execute-api.${AWS::Region}.${AWS::URLSuffix}/?classroomName=ChangeToYourClassName'
