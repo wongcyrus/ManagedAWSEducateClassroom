@@ -1,7 +1,7 @@
 {
-    "classroomName": "Lab",
+    "classroomName": "My AWS Educate Class",
     "stackName": "Lab",
-    "bucket": "managed-aws-educate-classroom-classroombucket-1b15xv6utt82f",
+    "bucket": "managed-aws-educate-classroom-classroombucket-15l8bdtkni0eu",
     "templateKey": "ec2-linux/template.yaml",
     "parametersKey": "ec2-linux/parameters.json"
 }

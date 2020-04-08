@@ -24,7 +24,7 @@ Metadata:
         Label: 
           default: "AWS SES Inbox (Optional)"
         Parameters: 
-          - SNSTopic
+          - SesInboxTopic
           - BucketName
       - 
         Label: 
@@ -38,8 +38,10 @@ Metadata:
         Parameters: 
           - StudentCommandEmail
           - StudentEmailDomains          
-    ParameterLabels: 
-      SNSTopic: 
+    ParameterLabels:
+      CalendarUrl:
+        default: "Public Class Schedule Calendar Url"
+      SesInboxTopic: 
         default: "AWS SES Inbox email SNS Topic"
       BucketName: 
         default: "AWS SES Inbox Bucket"
@@ -53,7 +55,10 @@ Metadata:
         default: "White List Teacher email domain" 
         
 Parameters:
-  SNSTopic:
+  SesInboxTopic:
+    Type: String
+    Default: ""
+  CalendarUrl:
     Type: String
     Default: ""
   BucketName:
@@ -85,7 +90,8 @@ Globals:
         ClassroomBucket: !Ref ClassroomBucket
 
 Conditions:
-  UseAwsSesInbox: !Not [ !Equals [ !Ref SNSTopic, "" ]]
+  UseAwsSesInbox: !Not [ !Equals [ !Ref SesInboxTopic, "" ]]
+  UseCalendarTrigger: !Not [ !Equals [ !Ref CalendarUrl, "" ]]
 
 Resources:
 
@@ -113,7 +119,7 @@ Resources:
     Type: 'AWS::SNS::Subscription'
     Condition: UseAwsSesInbox
     Properties:
-      TopicArn: !Ref SNSTopic
+      TopicArn: !Ref SesInboxTopic
       Endpoint: !GetAtt SetupStudentAccountQueue.Arn
       Protocol: sqs
       FilterPolicy:
@@ -140,7 +146,7 @@ Resources:
           Resource: !GetAtt [SetupStudentAccountQueue, Arn]
           Condition:
             ArnEquals:
-              aws:SourceArn: !Ref 'SNSTopic'
+              aws:SourceArn: !Ref 'SesInboxTopic'
        
   SetupStudentAccountFunction:
     Type: AWS::Serverless::Function
@@ -197,7 +203,7 @@ Resources:
     Type: 'AWS::SNS::Subscription'
     Condition: UseAwsSesInbox
     Properties:
-      TopicArn: !Ref SNSTopic
+      TopicArn: !Ref SesInboxTopic
       Endpoint: !GetAtt [CreateClassroomQueue, Arn]
       Protocol: sqs
       FilterPolicy:
@@ -224,7 +230,7 @@ Resources:
           Resource: !GetAtt CreateClassroomQueue.Arn
           Condition:
             ArnEquals:
-              aws:SourceArn: !Ref 'SNSTopic'              
+              aws:SourceArn: !Ref 'SesInboxTopic'              
   CreateClassroomFunction:
     Type: AWS::Serverless::Function
     Properties:
@@ -276,7 +282,7 @@ Resources:
     Type: 'AWS::SNS::Subscription'
     Condition: UseAwsSesInbox    
     Properties:
-      TopicArn: !Ref SNSTopic
+      TopicArn: !Ref SesInboxTopic
       Endpoint: !GetAtt [DeleteClassroomQueue, Arn]
       Protocol: sqs
       FilterPolicy:
@@ -303,7 +309,7 @@ Resources:
           Resource: !GetAtt DeleteClassroomQueue.Arn
           Condition:
             ArnEquals:
-              aws:SourceArn: !Ref 'SNSTopic'              
+              aws:SourceArn: !Ref 'SesInboxTopic'              
   DeleteClassroomFunction:
     Type: AWS::Serverless::Function
     Properties:
@@ -379,7 +385,7 @@ Resources:
           Type: HttpApi
           Properties:
             ApiId: !Ref HttpApi
-            Method: GET
+            Method: ANY
             Path: /
 
   GetRdpFileFunction:
@@ -408,6 +414,71 @@ Resources:
             Method: GET
             Path: /pem/key.pem
 
+# Use Calendar Trigger
+  CalendarEventsApplication:
+    Type: AWS::Serverless::Application
+    Condition: UseCalendarTrigger
+    Properties:
+      Location:
+        ApplicationId: 'arn:aws:serverlessrepo:us-east-1:111964674713:applications/calendar-trigger'
+        SemanticVersion: 0.0.1
+      Parameters:
+        CalendarUrl: !Ref CalendarUrl
+
+  DeleteClassroomCalendarEventsSubscription:
+    Type: 'AWS::SNS::Subscription'
+    Condition: UseCalendarTrigger    
+    Properties:
+      TopicArn: !GetAtt [CalendarEventsApplication, Outputs.CanlenderEventStopTopic]
+      Endpoint: !GetAtt [DeleteClassroomQueue, Arn]
+      Protocol: sqs
+
+  DeleteClassroomCalendarEventsQueuePolicy:
+    Type: AWS::SQS::QueuePolicy
+    Condition: UseCalendarTrigger
+    Properties:
+      Queues: [!Ref 'DeleteClassroomQueue']
+      PolicyDocument:
+        Version: '2008-10-17'
+        Id: PublicationPolicy
+        Statement:
+        - Sid: Allow-SNS-SendMessage
+          Effect: Allow
+          Principal:
+            AWS: '*'
+          Action: ['sqs:SendMessage']
+          Resource: !GetAtt DeleteClassroomQueue.Arn
+          Condition:
+            ArnEquals:
+              aws:SourceArn: !GetAtt [CalendarEventsApplication, Outputs.CanlenderEventStopTopic]
+
+  CreateClassroomCalendarEventsSubscription:
+    Type: 'AWS::SNS::Subscription'
+    Condition: UseCalendarTrigger
+    Properties:
+      TopicArn: !GetAtt [CalendarEventsApplication, Outputs.CanlenderEventStartTopic]
+      Endpoint: !GetAtt [CreateClassroomQueue, Arn]
+      Protocol: sqs
+      
+  CreateClassroomCalendarEventsQueuePolicy:
+    Type: AWS::SQS::QueuePolicy
+    Condition: UseCalendarTrigger
+    Properties:
+      Queues: [!Ref 'CreateClassroomQueue']
+      PolicyDocument:
+        Version: '2008-10-17'
+        Id: PublicationPolicy
+        Statement:
+        - Sid: Allow-SNS-SendMessage
+          Effect: Allow
+          Principal:
+            AWS: '*'
+          Action: ['sqs:SendMessage']
+          Resource: !GetAtt CreateClassroomQueue.Arn
+          Condition:
+            ArnEquals:
+              aws:SourceArn: !GetAtt [CalendarEventsApplication, Outputs.CanlenderEventStartTopic]
+        
 Outputs:
   SetupStudentAccountFunction:
     Description: "SetupStudentAccountFunction"

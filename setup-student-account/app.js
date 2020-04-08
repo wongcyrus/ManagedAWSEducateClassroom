@@ -100,7 +100,7 @@ exports.lambdaHandler = async(event, context) => {
     let { classroomName, email, rawKey } = event;
     console.log(event);
     if (event.Records) {
-        let { message, emailBody } = await common.getMessage(event);
+        let { message, emailBody } = await common.getSesInboxMessage(event);
         console.log(message);
         console.log(emailBody);
 

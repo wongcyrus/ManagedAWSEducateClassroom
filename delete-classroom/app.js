@@ -11,9 +11,15 @@ exports.lambdaHandler = async(event, context) => {
     let { classroomName, stackName } = event;
 
     if (event.Records) {
-        let { message, emailBody } = await common.getMessage(event);
-        stackName = emailBody.split('\n')[0].trim();
-        classroomName = message.slots.classroomName;
+        let snsMessage = await common.getSnsMessage(event);
+        if (snsMessage.Source === "Calendar-Trigger") {
+            ({ classroomName, stackName } = JSON.parse(snsMessage.desc));
+        }
+        else {
+            let { message, emailBody } = await common.getSesInboxMessage(event);
+            stackName = emailBody.split('\n')[0].trim();
+            classroomName = message.slots.classroomName;
+        }
     }
 
     let params = {

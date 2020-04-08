@@ -11,18 +11,24 @@ exports.lambdaHandler = async(event, context) => {
     let { classroomName, stackName, bucket, templateKey, parametersKey } = event;
 
     if (event.Records) {
-        let { message, emailBody } = await common.getMessage(event);
+        let snsMessage = await common.getSnsMessage(event);
+        if (snsMessage.Source === "Calendar-Trigger") {
+            ({ classroomName, stackName, bucket, templateKey, parametersKey }= JSON.parse(snsMessage.desc));
+        }
+        else {
+            let { message, emailBody } = await common.getSesInboxMessage(event);
 
-        bucket = message.inboxBucket;
-        stackName = emailBody.split('\n')[0].trim();
-        classroomName = message.slots.classroomName;
+            bucket = message.inboxBucket;
+            stackName = emailBody.split('\n')[0].trim();
+            classroomName = message.slots.classroomName;
 
-        templateKey = message.attachmentKeys.find(c => c.toLocaleLowerCase().endsWith(".yaml"));
-        parametersKey = message.attachmentKeys.find(c => c.toLocaleLowerCase().endsWith(".json"));
+            templateKey = message.attachmentKeys.find(c => c.toLocaleLowerCase().endsWith(".yaml"));
+            parametersKey = message.attachmentKeys.find(c => c.toLocaleLowerCase().endsWith(".json"));
+        }
     }
 
     console.log(classroomName, stackName, templateKey, parametersKey);
-    
+
     let params = {
         TableName: studentAccountTable,
         KeyConditionExpression: 'classroomName = :hkey',
