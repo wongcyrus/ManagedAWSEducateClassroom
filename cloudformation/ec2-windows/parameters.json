@@ -12,7 +12,7 @@
  },
  {
   "ParameterKey": "KeyPairName",
-  "ParameterValue": "###keyPairName###"
+  "ParameterValue": "###KeyPairName###"
  },
  {
   "ParameterKey": "KeyMaterial",

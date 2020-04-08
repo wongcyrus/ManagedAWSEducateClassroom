@@ -9,6 +9,6 @@ exports.lambdaHandler = async(event, context) => {
             "Content-Type": "application/x-pem-file"
         },
         "statusCode": 200,
-        "body": JSON.stringify(KeyMaterial).split("\\\\n").join(endOfLine)
+        "body": decodeURIComponent(KeyMaterial)
     };
 };

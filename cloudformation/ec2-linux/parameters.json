@@ -1,6 +1,6 @@
 [{
     "ParameterKey": "AmiId",
-    "ParameterValue": "ami-09d496c26aa745869"
+    "ParameterValue": "ami-0fc61db8544a617ed"
   },
   {
     "ParameterKey": "InstanceType",
@@ -8,11 +8,11 @@
   },
   {
     "ParameterKey": "KeyPairName",
-    "ParameterValue": "###keyPairName###"
+    "ParameterValue": "###KeyPairName###"
   },
   {
-    "ParameterKey": "KeyMaterial",
-    "ParameterValue": "###KeyMaterial###"
+    "ParameterKey": "UriEncodedKeyMaterial",
+    "ParameterValue": "###UriEncodedKeyMaterial###"
   },
   {
     "ParameterKey": "PemKeyFileUrl",

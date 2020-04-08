@@ -3,7 +3,7 @@ version = 0.1
 [default.deploy]
 [default.deploy.parameters]
 stack_name = "managed-aws-educate-classroom"
-s3_bucket = "amplify-allscreens-devt-82746-deployment"
+s3_bucket = "cyruswong-sam-repo"
 s3_prefix = "managed-aws-educate-classroom"
 region = "us-east-1"
 confirm_changeset = false
