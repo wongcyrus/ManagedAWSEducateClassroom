@@ -169,7 +169,19 @@ Resources:
             Queue: !GetAtt SetupStudentAccountQueue.Arn
             BatchSize: 1
 
-# Create Classroom
+# Create and Start Classroom
+  StartInstanceFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: start-instance/
+      Policies:
+        - AmazonDynamoDBFullAccess
+        - Version: '2012-10-17'
+          Statement:
+            - Effect: Allow
+              Action: "sts:AssumeRole"
+              Resource: !Sub "arn:aws:iam::*:role/crossaccountteacher${AWS::AccountId}"
+
   CreateStudentStackFunction:
     Type: AWS::Serverless::Function
     Properties:
@@ -242,9 +254,12 @@ Resources:
         - !If [UseAwsSesInbox, S3ReadPolicy:{ BucketName: !Ref 'BucketName'}, !Ref "AWS::NoValue"]
         - LambdaInvokePolicy:
             FunctionName: !Ref CreateStudentStackFunction
+        - LambdaInvokePolicy:
+            FunctionName: !Ref StartInstanceFunction            
       Environment:
         Variables:
           CreateStudentStackFunctionArn: !GetAtt CreateStudentStackFunction.Arn
+          StartInstanceFunctionArn: !GetAtt StartInstanceFunction.Arn
       Events:
         SQSEvent:
           Type: SQS
@@ -252,8 +267,19 @@ Resources:
             Queue: !GetAtt CreateClassroomQueue.Arn
             BatchSize: 1        
 
-            
-# Delete Classroom
+# Delete or Stop Classroom
+  StopInstanceFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: stop-instance/
+      Policies:
+        - AmazonDynamoDBFullAccess
+        - Version: '2012-10-17'
+          Statement:
+            - Effect: Allow
+              Action: "sts:AssumeRole"
+              Resource: !Sub "arn:aws:iam::*:role/crossaccountteacher${AWS::AccountId}"
+              
   DeleteStudentStackFunction:
     Type: AWS::Serverless::Function
     Properties:
@@ -321,9 +347,12 @@ Resources:
         - !If [UseAwsSesInbox, S3ReadPolicy:{ BucketName: !Ref 'BucketName'}, !Ref "AWS::NoValue"]
         - LambdaInvokePolicy:
             FunctionName: !Ref DeleteStudentStackFunction
+        - LambdaInvokePolicy:
+            FunctionName: !Ref StopInstanceFunction
       Environment:
         Variables:
           DeleteStudentStackFunctionArn: !GetAtt DeleteStudentStackFunction.Arn
+          StopInstanceFunctionArn: !GetAtt StopInstanceFunction.Arn
       Events:
         SQSEvent:
           Type: SQS

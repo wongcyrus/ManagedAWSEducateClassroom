@@ -1,7 +1,7 @@
 {
-  "name": "create-student-stack",
+  "name": "stop-instance",
   "version": "1.0.0",
-  "description": "create-student-stack",
+  "description": "stop-instance",
   "main": "app.js",
   "author": "SAM CLI",
   "license": "MIT",

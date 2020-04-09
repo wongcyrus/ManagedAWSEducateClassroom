@@ -63,7 +63,7 @@ exports.lambdaHandler = async(event, context) => {
     replaceValue("###studentAccountArn###", studentAccount.Item.studentAccountArn);
     replaceValue("###KeyPairName###", keyPair.KeyName);
     replaceValue("###KeyMaterial###", keyPair.KeyMaterial);
-     replaceValue("###UriEncodedKeyMaterial###", encodeURIComponent(keyPair.KeyMaterial));
+    replaceValue("###UriEncodedKeyMaterial###", encodeURIComponent(keyPair.KeyMaterial));
     replaceValue("###RdpFileUrl###", rdpFileUrl);
     replaceValue("###PemKeyFileUrl###", pemKeyFileUrl);
     

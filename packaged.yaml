@@ -1,0 +1,603 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: 'managed-aws-educate-classroom
+
+  '
+Metadata:
+  AWS::ServerlessRepo::Application:
+    Name: managed-aws-educate-classroom
+    Description: "A centralized control to all student\u2019s AWS Educate Classroom\
+      \ Account.  Educators can create and delete cloudformation stack in all student's\
+      \ AWS Account in each AWS Educate Classroom.\n"
+    Author: Cyrus Wong
+    SpdxLicenseId: Apache-2.0
+    LicenseUrl: s3://cyruswong-sam-repo/175792518e4ac015ab6696d16c4f607e
+    ReadmeUrl: s3://cyruswong-sam-repo/64c2d61c0c4dfbba52cd9a719feb0988
+    Labels:
+    - cloudformation
+    - AWS_Educate
+    HomePageUrl: https://github.com/wongcyrus/managed-aws-educate-classroom
+    SemanticVersion: 0.0.1
+    SourceCodeUrl: https://github.com/wongcyrus/managed-aws-educate-classroom
+  AWS::CloudFormation::Interface:
+    ParameterGroups:
+    - Label:
+        default: AWS SES Inbox (Optional)
+      Parameters:
+      - SesInboxTopic
+      - BucketName
+    - Label:
+        default: Teacher Email Settings (Optional)
+      Parameters:
+      - TeacherCommandEmail
+      - TeacherEmailDomains
+    - Label:
+        default: Student Email Settings (Optional)
+      Parameters:
+      - StudentCommandEmail
+      - StudentEmailDomains
+    ParameterLabels:
+      CalendarUrl:
+        default: Public Class Schedule Calendar Url
+      SesInboxTopic:
+        default: AWS SES Inbox email SNS Topic
+      BucketName:
+        default: AWS SES Inbox Bucket
+      StudentCommandEmail:
+        default: Student Command Email Address
+      StudentEmailDomains:
+        default: White List Student email domain
+      TeacherCommandEmail:
+        default: Teacher Command Email Address
+      TeacherEmailDomains:
+        default: White List Teacher email domain
+Parameters:
+  SesInboxTopic:
+    Type: String
+    Default: ''
+  CalendarUrl:
+    Type: String
+    Default: ''
+  BucketName:
+    Type: String
+    Default: ''
+  StudentCommandEmail:
+    Type: String
+    Default: ''
+  StudentEmailDomains:
+    Type: String
+    Default: ''
+  TeacherCommandEmail:
+    Type: String
+    Default: ''
+  TeacherEmailDomains:
+    Type: String
+    Default: ''
+Globals:
+  Function:
+    Handler: app.lambdaHandler
+    Timeout: 180
+    Runtime: nodejs12.x
+    Layers:
+    - Ref: CommonLayer
+    Environment:
+      Variables:
+        StudentAccountTable:
+          Ref: StudentAccountTable
+        ClassroomBucket:
+          Ref: ClassroomBucket
+Conditions:
+  UseAwsSesInbox:
+    Fn::Not:
+    - Fn::Equals:
+      - Ref: SesInboxTopic
+      - ''
+  UseCalendarTrigger:
+    Fn::Not:
+    - Fn::Equals:
+      - Ref: CalendarUrl
+      - ''
+Resources:
+  CommonLayer:
+    Type: AWS::Serverless::LayerVersion
+    Properties:
+      LayerName: managed-aws-educate-classroom-common-layer
+      Description: Common code.
+      ContentUri: s3://cyruswong-sam-repo/9f0d614b99934a6f34e85995aad8a01d
+      CompatibleRuntimes:
+      - nodejs12.x
+  SetupStudentAccountQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      VisibilityTimeout: 180
+      RedrivePolicy:
+        deadLetterTargetArn:
+          Fn::GetAtt:
+          - SetupStudentAccountDeadLetterQueue
+          - Arn
+        maxReceiveCount: 3
+  SetupStudentAccountDeadLetterQueue:
+    Type: AWS::SQS::Queue
+  SetupStudentAccountSubscription:
+    Type: AWS::SNS::Subscription
+    Condition: UseAwsSesInbox
+    Properties:
+      TopicArn:
+        Ref: SesInboxTopic
+      Endpoint:
+        Fn::GetAtt:
+        - SetupStudentAccountQueue
+        - Arn
+      Protocol: sqs
+      FilterPolicy:
+        receiver:
+        - Ref: StudentCommandEmail
+        intentName:
+        - RegisterStudentAccountIntent
+        senderEmailDomain:
+          Fn::Split:
+          - ','
+          - Ref: StudentEmailDomains
+  SetupStudentAccountQueuePolicy:
+    Type: AWS::SQS::QueuePolicy
+    Condition: UseAwsSesInbox
+    Properties:
+      Queues:
+      - Ref: SetupStudentAccountQueue
+      PolicyDocument:
+        Version: '2008-10-17'
+        Id: PublicationPolicy
+        Statement:
+        - Sid: Allow-SNS-SendMessage
+          Effect: Allow
+          Principal:
+            AWS: '*'
+          Action:
+          - sqs:SendMessage
+          Resource:
+            Fn::GetAtt:
+            - SetupStudentAccountQueue
+            - Arn
+          Condition:
+            ArnEquals:
+              aws:SourceArn:
+                Ref: SesInboxTopic
+  SetupStudentAccountFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: s3://cyruswong-sam-repo/023d20147ff5f409f09253597c211442
+      Policies:
+      - AmazonDynamoDBFullAccess
+      - S3ReadPolicy:
+          BucketName:
+            Ref: ClassroomBucket
+      - Fn::If:
+        - UseAwsSesInbox
+        - S3ReadPolicy:
+            BucketName:
+              Ref: BucketName
+        - Ref: AWS::NoValue
+      - Version: '2012-10-17'
+        Statement:
+        - Effect: Allow
+          Action: sts:AssumeRole
+          Resource:
+            Fn::Sub: arn:aws:iam::*:role/crossaccountteacher${AWS::AccountId}
+      Events:
+        SQSEvent:
+          Type: SQS
+          Properties:
+            Queue:
+              Fn::GetAtt:
+              - SetupStudentAccountQueue
+              - Arn
+            BatchSize: 1
+  CreateStudentStackFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: s3://cyruswong-sam-repo/065eec5033660ba0f616455732c03588
+      Policies:
+      - AmazonDynamoDBFullAccess
+      - S3ReadPolicy:
+          BucketName:
+            Ref: ClassroomBucket
+      - Fn::If:
+        - UseAwsSesInbox
+        - S3ReadPolicy:
+            BucketName:
+              Ref: BucketName
+        - Ref: AWS::NoValue
+      - Version: '2012-10-17'
+        Statement:
+        - Effect: Allow
+          Action: sts:AssumeRole
+          Resource:
+            Fn::Sub: arn:aws:iam::*:role/crossaccountteacher${AWS::AccountId}
+      Environment:
+        Variables:
+          RdpFileUrl:
+            Fn::Sub: https://${HttpApi}.execute-api.${AWS::Region}.${AWS::URLSuffix}/rdp/login.rdp
+          PemKeyFileUrl:
+            Fn::Sub: https://${HttpApi}.execute-api.${AWS::Region}.${AWS::URLSuffix}/pem/key.pem
+  CreateClassroomQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      VisibilityTimeout: 180
+      RedrivePolicy:
+        deadLetterTargetArn:
+          Fn::GetAtt:
+          - CreateClassroomDeadLetterQueue
+          - Arn
+        maxReceiveCount: 3
+  CreateClassroomDeadLetterQueue:
+    Type: AWS::SQS::Queue
+  CreateClassroomSubscription:
+    Type: AWS::SNS::Subscription
+    Condition: UseAwsSesInbox
+    Properties:
+      TopicArn:
+        Ref: SesInboxTopic
+      Endpoint:
+        Fn::GetAtt:
+        - CreateClassroomQueue
+        - Arn
+      Protocol: sqs
+      FilterPolicy:
+        receiver:
+        - Ref: TeacherCommandEmail
+        intentName:
+        - CreateClassroomIntent
+        senderEmailDomain:
+          Fn::Split:
+          - ','
+          - Ref: TeacherEmailDomains
+  CreateClassroomQueuePolicy:
+    Type: AWS::SQS::QueuePolicy
+    Condition: UseAwsSesInbox
+    Properties:
+      Queues:
+      - Ref: CreateClassroomQueue
+      PolicyDocument:
+        Version: '2008-10-17'
+        Id: PublicationPolicy
+        Statement:
+        - Sid: Allow-SNS-SendMessage
+          Effect: Allow
+          Principal:
+            AWS: '*'
+          Action:
+          - sqs:SendMessage
+          Resource:
+            Fn::GetAtt:
+            - CreateClassroomQueue
+            - Arn
+          Condition:
+            ArnEquals:
+              aws:SourceArn:
+                Ref: SesInboxTopic
+  CreateClassroomFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: s3://cyruswong-sam-repo/78c45fc3a25c4263ac6433a9cf5d57c3
+      Policies:
+      - AmazonDynamoDBFullAccess
+      - S3ReadPolicy:
+          BucketName:
+            Ref: ClassroomBucket
+      - Fn::If:
+        - UseAwsSesInbox
+        - S3ReadPolicy:
+            BucketName:
+              Ref: BucketName
+        - Ref: AWS::NoValue
+      - LambdaInvokePolicy:
+          FunctionName:
+            Ref: CreateStudentStackFunction
+      Environment:
+        Variables:
+          CreateStudentStackFunctionArn:
+            Fn::GetAtt:
+            - CreateStudentStackFunction
+            - Arn
+      Events:
+        SQSEvent:
+          Type: SQS
+          Properties:
+            Queue:
+              Fn::GetAtt:
+              - CreateClassroomQueue
+              - Arn
+            BatchSize: 1
+  DeleteStudentStackFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: s3://cyruswong-sam-repo/f9c5eb634f15e335da22add90b90b9a7
+      Policies:
+      - AmazonDynamoDBFullAccess
+      - S3ReadPolicy:
+          BucketName:
+            Ref: ClassroomBucket
+      - Version: '2012-10-17'
+        Statement:
+        - Effect: Allow
+          Action: sts:AssumeRole
+          Resource:
+            Fn::Sub: arn:aws:iam::*:role/crossaccountteacher${AWS::AccountId}
+  DeleteClassroomQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      VisibilityTimeout: 180
+      RedrivePolicy:
+        deadLetterTargetArn:
+          Fn::GetAtt:
+          - DeleteClassroomDeadLetterQueue
+          - Arn
+        maxReceiveCount: 3
+  DeleteClassroomDeadLetterQueue:
+    Type: AWS::SQS::Queue
+  DeleteClassroomSubscription:
+    Type: AWS::SNS::Subscription
+    Condition: UseAwsSesInbox
+    Properties:
+      TopicArn:
+        Ref: SesInboxTopic
+      Endpoint:
+        Fn::GetAtt:
+        - DeleteClassroomQueue
+        - Arn
+      Protocol: sqs
+      FilterPolicy:
+        receiver:
+        - Ref: TeacherCommandEmail
+        intentName:
+        - DeleteClassroomIntent
+        senderEmailDomain:
+          Fn::Split:
+          - ','
+          - Ref: TeacherEmailDomains
+  DeleteClassroomQueuePolicy:
+    Type: AWS::SQS::QueuePolicy
+    Condition: UseAwsSesInbox
+    Properties:
+      Queues:
+      - Ref: DeleteClassroomQueue
+      PolicyDocument:
+        Version: '2008-10-17'
+        Id: PublicationPolicy
+        Statement:
+        - Sid: Allow-SNS-SendMessage
+          Effect: Allow
+          Principal:
+            AWS: '*'
+          Action:
+          - sqs:SendMessage
+          Resource:
+            Fn::GetAtt:
+            - DeleteClassroomQueue
+            - Arn
+          Condition:
+            ArnEquals:
+              aws:SourceArn:
+                Ref: SesInboxTopic
+  DeleteClassroomFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: s3://cyruswong-sam-repo/1b57e5c5a4c446290d7def0b9d4b5b0b
+      Policies:
+      - AmazonDynamoDBFullAccess
+      - S3ReadPolicy:
+          BucketName:
+            Ref: ClassroomBucket
+      - Fn::If:
+        - UseAwsSesInbox
+        - S3ReadPolicy:
+            BucketName:
+              Ref: BucketName
+        - Ref: AWS::NoValue
+      - LambdaInvokePolicy:
+          FunctionName:
+            Ref: DeleteStudentStackFunction
+      Environment:
+        Variables:
+          DeleteStudentStackFunctionArn:
+            Fn::GetAtt:
+            - DeleteStudentStackFunction
+            - Arn
+      Events:
+        SQSEvent:
+          Type: SQS
+          Properties:
+            Queue:
+              Fn::GetAtt:
+              - DeleteClassroomQueue
+              - Arn
+            BatchSize: 1
+  StudentAccountTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+      - AttributeName: classroomName
+        AttributeType: S
+      - AttributeName: email
+        AttributeType: S
+      KeySchema:
+      - AttributeName: classroomName
+        KeyType: HASH
+      - AttributeName: email
+        KeyType: RANGE
+      GlobalSecondaryIndexes:
+      - IndexName: emailGSI
+        KeySchema:
+        - AttributeName: email
+          KeyType: HASH
+        - AttributeName: classroomName
+          KeyType: RANGE
+        Projection:
+          ProjectionType: ALL
+  ClassroomBucket:
+    Type: AWS::S3::Bucket
+  HttpApi:
+    Type: AWS::Serverless::HttpApi
+  SetupStudentAccountWebUiFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: s3://cyruswong-sam-repo/e547a72488c6eb8844d6d0621f5762d2
+      Policies:
+      - LambdaInvokePolicy:
+          FunctionName:
+            Ref: SetupStudentAccountFunction
+      Environment:
+        Variables:
+          SetupStudentAccountFunction:
+            Fn::GetAtt:
+            - SetupStudentAccountFunction
+            - Arn
+      Events:
+        ExplicitApi:
+          Type: HttpApi
+          Properties:
+            ApiId:
+              Ref: HttpApi
+            Method: ANY
+            Path: /
+  GetRdpFileFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: s3://cyruswong-sam-repo/e547a72488c6eb8844d6d0621f5762d2
+      Handler: getRdp.lambdaHandler
+      Events:
+        ExplicitApi:
+          Type: HttpApi
+          Properties:
+            ApiId:
+              Ref: HttpApi
+            Method: GET
+            Path: /rdp/login.rdp
+  GetPemKeyFileFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: s3://cyruswong-sam-repo/e547a72488c6eb8844d6d0621f5762d2
+      Handler: getPemKey.lambdaHandler
+      Events:
+        ExplicitApi:
+          Type: HttpApi
+          Properties:
+            ApiId:
+              Ref: HttpApi
+            Method: GET
+            Path: /pem/key.pem
+  CalendarEventsApplication:
+    Type: AWS::Serverless::Application
+    Condition: UseCalendarTrigger
+    Properties:
+      Location:
+        ApplicationId: arn:aws:serverlessrepo:us-east-1:111964674713:applications/calendar-trigger
+        SemanticVersion: 0.0.1
+      Parameters:
+        CalendarUrl:
+          Ref: CalendarUrl
+  DeleteClassroomCalendarEventsSubscription:
+    Type: AWS::SNS::Subscription
+    Condition: UseCalendarTrigger
+    Properties:
+      TopicArn:
+        Fn::GetAtt:
+        - CalendarEventsApplication
+        - Outputs.CanlenderEventStopTopic
+      Endpoint:
+        Fn::GetAtt:
+        - DeleteClassroomQueue
+        - Arn
+      Protocol: sqs
+  DeleteClassroomCalendarEventsQueuePolicy:
+    Type: AWS::SQS::QueuePolicy
+    Condition: UseCalendarTrigger
+    Properties:
+      Queues:
+      - Ref: DeleteClassroomQueue
+      PolicyDocument:
+        Version: '2008-10-17'
+        Id: PublicationPolicy
+        Statement:
+        - Sid: Allow-SNS-SendMessage
+          Effect: Allow
+          Principal:
+            AWS: '*'
+          Action:
+          - sqs:SendMessage
+          Resource:
+            Fn::GetAtt:
+            - DeleteClassroomQueue
+            - Arn
+          Condition:
+            ArnEquals:
+              aws:SourceArn:
+                Fn::GetAtt:
+                - CalendarEventsApplication
+                - Outputs.CanlenderEventStopTopic
+  CreateClassroomCalendarEventsSubscription:
+    Type: AWS::SNS::Subscription
+    Condition: UseCalendarTrigger
+    Properties:
+      TopicArn:
+        Fn::GetAtt:
+        - CalendarEventsApplication
+        - Outputs.CanlenderEventStartTopic
+      Endpoint:
+        Fn::GetAtt:
+        - CreateClassroomQueue
+        - Arn
+      Protocol: sqs
+  CreateClassroomCalendarEventsQueuePolicy:
+    Type: AWS::SQS::QueuePolicy
+    Condition: UseCalendarTrigger
+    Properties:
+      Queues:
+      - Ref: CreateClassroomQueue
+      PolicyDocument:
+        Version: '2008-10-17'
+        Id: PublicationPolicy
+        Statement:
+        - Sid: Allow-SNS-SendMessage
+          Effect: Allow
+          Principal:
+            AWS: '*'
+          Action:
+          - sqs:SendMessage
+          Resource:
+            Fn::GetAtt:
+            - CreateClassroomQueue
+            - Arn
+          Condition:
+            ArnEquals:
+              aws:SourceArn:
+                Fn::GetAtt:
+                - CalendarEventsApplication
+                - Outputs.CanlenderEventStartTopic
+Outputs:
+  SetupStudentAccountFunction:
+    Description: SetupStudentAccountFunction
+    Value:
+      Fn::GetAtt:
+      - SetupStudentAccountFunction
+      - Arn
+  CreateClassroomFunction:
+    Description: CreateClassroomFunction
+    Value:
+      Fn::GetAtt:
+      - CreateClassroomFunction
+      - Arn
+  DeleteClassroomFunction:
+    Description: DeleteClassroomFunction
+    Value:
+      Fn::GetAtt:
+      - DeleteClassroomFunction
+      - Arn
+  ClassroomBucket:
+    Value:
+      Ref: ClassroomBucket
+  StudentRegistrationUrl:
+    Description: URL of your API endpoint
+    Value:
+      Fn::Sub: https://${HttpApi}.execute-api.${AWS::Region}.${AWS::URLSuffix}/?classroomName=ChangeToYourClassName

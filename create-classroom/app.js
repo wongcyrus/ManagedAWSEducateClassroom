@@ -5,15 +5,16 @@ const common = require('/opt/common');
 
 const studentAccountTable = process.env.StudentAccountTable;
 const createStudentStackFunctionArn = process.env.CreateStudentStackFunctionArn;
+const startInstanceFunctionArn = process.env.StartInstanceFunctionArn;
 
 exports.lambdaHandler = async(event, context) => {
     console.log(event);
-    let { classroomName, stackName, bucket, templateKey, parametersKey } = event;
+    let { classroomName, stackName, action, bucket, templateKey, parametersKey } = event;
 
     if (event.Records) {
         let snsMessage = await common.getSnsMessage(event);
         if (snsMessage.Source === "Calendar-Trigger") {
-            ({ classroomName, stackName, bucket, templateKey, parametersKey }= JSON.parse(snsMessage.desc));
+            ({ classroomName, stackName, action, bucket, templateKey, parametersKey } = JSON.parse(snsMessage.desc));
         }
         else {
             let { message, emailBody } = await common.getSesInboxMessage(event);
@@ -40,7 +41,6 @@ exports.lambdaHandler = async(event, context) => {
     let students = await dynamo.query(params).promise();
     console.log(students);
 
-
     const createStack = async email => {
         let params = {
             FunctionName: createStudentStackFunctionArn,
@@ -49,8 +49,22 @@ exports.lambdaHandler = async(event, context) => {
         return await lambda.invokeAsync(params).promise();
     };
 
+    const startInstance = async email => {
+        let params = {
+            FunctionName: startInstanceFunctionArn,
+            InvokeArgs: JSON.stringify({ classroomName, stackName, email })
+        };
+        return await lambda.invokeAsync(params).promise();
+    };
+
     let result = students.Items.map(s => createStack(s.email));
     console.log(await Promise.all(result));
+    if (action === "StartStop") {
+        console.log("Start Student Instance.");
+        result = students.Items.map(s => startInstance(s.email));
+        console.log(await Promise.all(result));
+    }
+
 
     return "OK";
 };

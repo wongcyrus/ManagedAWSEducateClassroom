@@ -5,15 +5,16 @@ const common = require('/opt/common');
 
 const studentAccountTable = process.env.StudentAccountTable;
 const deleteStudentStackFunctionArn = process.env.DeleteStudentStackFunctionArn;
+const stopInstanceFunctionArn = process.env.StopInstanceFunctionArn;
 
 exports.lambdaHandler = async(event, context) => {
     console.log(event);
-    let { classroomName, stackName } = event;
+    let { classroomName, stackName, action } = event;
 
     if (event.Records) {
         let snsMessage = await common.getSnsMessage(event);
         if (snsMessage.Source === "Calendar-Trigger") {
-            ({ classroomName, stackName } = JSON.parse(snsMessage.desc));
+            ({ classroomName, stackName, action } = JSON.parse(snsMessage.desc));
         }
         else {
             let { message, emailBody } = await common.getSesInboxMessage(event);
@@ -34,7 +35,7 @@ exports.lambdaHandler = async(event, context) => {
     console.log(students);
     console.log(classroomName, stackName);
 
-    const createStack = async email => {
+    const deleteStack = async email => {
         let params = {
             FunctionName: deleteStudentStackFunctionArn,
             InvokeArgs: JSON.stringify({ classroomName, stackName, email })
@@ -42,8 +43,22 @@ exports.lambdaHandler = async(event, context) => {
         return await lambda.invokeAsync(params).promise();
     };
 
-    let result = students.Items.map(s => createStack(s.email));
-    console.log(await Promise.all(result));
+    const stopInstance = async email => {
+        let params = {
+            FunctionName: stopInstanceFunctionArn,
+            InvokeArgs: JSON.stringify({ classroomName, stackName, email })
+        };
+        return await lambda.invokeAsync(params).promise();
+    };
 
+    if (action === "StartStop") {
+        console.log("Stop Student Instance.");
+        let result = students.Items.map(s => stopInstance(s.email));
+        console.log(await Promise.all(result));
+    }
+    else {
+        let result = students.Items.map(s => deleteStack(s.email));
+        console.log(await Promise.all(result));
+    }
     return "OK";
 };
