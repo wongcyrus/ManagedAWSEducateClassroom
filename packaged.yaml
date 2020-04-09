@@ -192,10 +192,22 @@ Resources:
               - SetupStudentAccountQueue
               - Arn
             BatchSize: 1
+  StartInstanceFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: s3://cyruswong-sam-repo/830f68a11ff5eeb9e69741d87b285468
+      Policies:
+      - AmazonDynamoDBFullAccess
+      - Version: '2012-10-17'
+        Statement:
+        - Effect: Allow
+          Action: sts:AssumeRole
+          Resource:
+            Fn::Sub: arn:aws:iam::*:role/crossaccountteacher${AWS::AccountId}
   CreateStudentStackFunction:
     Type: AWS::Serverless::Function
     Properties:
-      CodeUri: s3://cyruswong-sam-repo/065eec5033660ba0f616455732c03588
+      CodeUri: s3://cyruswong-sam-repo/a1aaa12caf7e6790a91bc6ec8a56a0ad
       Policies:
       - AmazonDynamoDBFullAccess
       - S3ReadPolicy:
@@ -278,7 +290,7 @@ Resources:
   CreateClassroomFunction:
     Type: AWS::Serverless::Function
     Properties:
-      CodeUri: s3://cyruswong-sam-repo/78c45fc3a25c4263ac6433a9cf5d57c3
+      CodeUri: s3://cyruswong-sam-repo/70549b081207956c8cb42db4656fa03b
       Policies:
       - AmazonDynamoDBFullAccess
       - S3ReadPolicy:
@@ -293,11 +305,18 @@ Resources:
       - LambdaInvokePolicy:
           FunctionName:
             Ref: CreateStudentStackFunction
+      - LambdaInvokePolicy:
+          FunctionName:
+            Ref: StartInstanceFunction
       Environment:
         Variables:
           CreateStudentStackFunctionArn:
             Fn::GetAtt:
             - CreateStudentStackFunction
+            - Arn
+          StartInstanceFunctionArn:
+            Fn::GetAtt:
+            - StartInstanceFunction
             - Arn
       Events:
         SQSEvent:
@@ -308,6 +327,18 @@ Resources:
               - CreateClassroomQueue
               - Arn
             BatchSize: 1
+  StopInstanceFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: s3://cyruswong-sam-repo/5171129951f84ebd2253090e319a027e
+      Policies:
+      - AmazonDynamoDBFullAccess
+      - Version: '2012-10-17'
+        Statement:
+        - Effect: Allow
+          Action: sts:AssumeRole
+          Resource:
+            Fn::Sub: arn:aws:iam::*:role/crossaccountteacher${AWS::AccountId}
   DeleteStudentStackFunction:
     Type: AWS::Serverless::Function
     Properties:
@@ -382,7 +413,7 @@ Resources:
   DeleteClassroomFunction:
     Type: AWS::Serverless::Function
     Properties:
-      CodeUri: s3://cyruswong-sam-repo/1b57e5c5a4c446290d7def0b9d4b5b0b
+      CodeUri: s3://cyruswong-sam-repo/f8bec4d6e3e644cc4a450ad1311474ba
       Policies:
       - AmazonDynamoDBFullAccess
       - S3ReadPolicy:
@@ -397,11 +428,18 @@ Resources:
       - LambdaInvokePolicy:
           FunctionName:
             Ref: DeleteStudentStackFunction
+      - LambdaInvokePolicy:
+          FunctionName:
+            Ref: StopInstanceFunction
       Environment:
         Variables:
           DeleteStudentStackFunctionArn:
             Fn::GetAtt:
             - DeleteStudentStackFunction
+            - Arn
+          StopInstanceFunctionArn:
+            Fn::GetAtt:
+            - StopInstanceFunction
             - Arn
       Events:
         SQSEvent:
