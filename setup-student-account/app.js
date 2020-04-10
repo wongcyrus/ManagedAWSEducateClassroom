@@ -56,7 +56,7 @@ const initStudentAccount = async(classroomName, email, rawKey) => {
     await cloudformation.waitFor('stackCreateComplete', params).promise();
     response = await cloudformation.describeStacks(params).promise();
     let labStackCreationCompleteTopic = response.Stacks[0].Outputs
-        .find(c => c.OutputKey === "SNSTopicCloudFormation").OutputValue;
+        .find(c => c.OutputKey === "SNSCloudFormationTopic").OutputValue;
 
     let notifyStudentTopic = response.Stacks[0].Outputs
         .find(c => c.OutputKey === "NotifyStudentTopic").OutputValue;
