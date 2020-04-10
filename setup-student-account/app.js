@@ -14,7 +14,7 @@ const extractKeys = rawKey => {
 
     let secretSessionTokenEndIndex = rawKey.indexOf("\r", secretSessionTokenIndex);
     if (secretSessionTokenEndIndex === -1) secretSessionTokenEndIndex = rawKey.length;
-    
+
     const sessionToken = rawKey.substring(secretSessionTokenIndex, secretSessionTokenEndIndex).replace(/(\r\n|\n|\r)/gm, "");
     console.log({ accessKeyId, secretAccessKey, sessionToken });
     return { accessKeyId, secretAccessKey, sessionToken };
@@ -58,6 +58,8 @@ const initStudentAccount = async(classroomName, email, rawKey) => {
     let labStackCreationCompleteTopic = response.Stacks[0].Outputs
         .find(c => c.OutputKey === "SNSTopicCloudFormation").OutputValue;
 
+    let notifyStudentTopic = response.Stacks[0].Outputs
+        .find(c => c.OutputKey === "NotifyStudentTopic").OutputValue;
     console.log(classroomName, email, rawKey);
 
 
@@ -89,6 +91,7 @@ const initStudentAccount = async(classroomName, email, rawKey) => {
             "studentAccountArn": studentAcocuntIdentity.Arn,
             "awsAccountId": studentAcocuntIdentity.Account,
             "labStackCreationCompleteTopic": labStackCreationCompleteTopic,
+            "notifyStudentTopic": notifyStudentTopic,
             "keyPair": keyPair
         }
     }).promise();

@@ -75,7 +75,11 @@ Resources:
               Region: !Ref AWS::Region
               UserData: !Ref UserData
               Password: !Ref Password
-
+      Tags:
+        -
+          Key: Password
+          Value: !Ref Password
+          
   InstanceSecurityGroup:
     Type: AWS::EC2::SecurityGroup
     Properties:

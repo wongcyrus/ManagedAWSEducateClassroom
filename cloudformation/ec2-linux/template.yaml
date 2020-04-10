@@ -37,7 +37,7 @@ Resources:
               StackName: !Ref AWS::StackName
               Region: !Ref AWS::Region
               UserData: !Ref UserData
-                   
+
   InstanceSecurityGroup:
     Type: AWS::EC2::SecurityGroup
     Properties:

@@ -11,24 +11,21 @@ const stopStudentInstance = async(param) => {
         RoleSessionName: 'studentAccount'
     }).promise();
 
-    const cloudformation = new AWS.CloudFormation({
+    const credential = {
         accessKeyId: token.Credentials.AccessKeyId,
         secretAccessKey: token.Credentials.SecretAccessKey,
         sessionToken: token.Credentials.SessionToken,
         region: "us-east-1"
-    });
+    };
+    
+    const cloudformation = new AWS.CloudFormation(credential);
     let response = await cloudformation.describeStackResources({
         StackName: stackName
     }).promise();
     const instanceIds = response.StackResources.filter(c => c.ResourceType === "AWS::EC2::Instance").map(c => c.PhysicalResourceId);
     console.log(instanceIds);
 
-    const ec2 = new AWS.EC2({
-        accessKeyId: token.Credentials.AccessKeyId,
-        secretAccessKey: token.Credentials.SecretAccessKey,
-        sessionToken: token.Credentials.SessionToken,
-        region: "us-east-1"
-    });
+    const ec2 = new AWS.EC2(credential);
 
     response = await ec2.stopInstances({
         InstanceIds: instanceIds

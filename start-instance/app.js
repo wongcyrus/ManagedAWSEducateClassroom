@@ -4,19 +4,21 @@ const studentAccountTable = process.env.StudentAccountTable;
 
 
 const startStudentInstance = async(param) => {
-    const { roleArn, stackName } = param;
+    const { roleArn, stackName, notifyStudentTopic } = param;
     const sts = new AWS.STS();
     const token = await sts.assumeRole({
         RoleArn: roleArn,
         RoleSessionName: 'studentAccount'
     }).promise();
 
-    const cloudformation = new AWS.CloudFormation({
+    const credential = {
         accessKeyId: token.Credentials.AccessKeyId,
         secretAccessKey: token.Credentials.SecretAccessKey,
         sessionToken: token.Credentials.SessionToken,
         region: "us-east-1"
-    });
+    };
+
+    const cloudformation = new AWS.CloudFormation(credential);
 
     let response = await cloudformation.describeStackResources({
         StackName: stackName
@@ -24,15 +26,37 @@ const startStudentInstance = async(param) => {
     const instanceIds = response.StackResources.filter(c => c.ResourceType === "AWS::EC2::Instance").map(c => c.PhysicalResourceId);
     console.log(instanceIds);
 
-    const ec2 = new AWS.EC2({
-        accessKeyId: token.Credentials.AccessKeyId,
-        secretAccessKey: token.Credentials.SecretAccessKey,
-        sessionToken: token.Credentials.SessionToken,
-        region: "us-east-1"
-    });
+    if (instanceIds.length === 0) return;
+
+    const ec2 = new AWS.EC2(credential);
 
     response = await ec2.startInstances({
         InstanceIds: instanceIds
+    }).promise();
+    console.log(response);
+
+    response = await ec2.waitFor("instanceRunning", {
+        InstanceIds: instanceIds
+    }).promise();
+    console.log(response);
+    response = await ec2.describeInstances({
+        InstanceIds: instanceIds
+    }).promise();
+
+    const messages = response.Reservations[0].Instances.map(c => {
+        return {
+            PublicDnsName: c.PublicDnsName,
+            Tags: c.Tags
+        };
+    });
+    
+    console.log(JSON.stringify(messages));
+
+    const sns = new AWS.SNS(credential);
+    response = await sns.publish({
+        Subject: "Running EC2 Instances for " + stackName,
+        Message: JSON.stringify(messages),
+        TopicArn: notifyStudentTopic
     }).promise();
     console.log(response);
 };
@@ -54,6 +78,7 @@ exports.lambdaHandler = async(event, context) => {
     const param = {
         stackName,
         roleArn: `arn:aws:iam::${studentAccount.Item.awsAccountId}:role/crossaccountteacher${awsAccountId}`,
+        notifyStudentTopic: studentAccount.Item.notifyStudentTopic
     };
     await startStudentInstance(param);
     return "OK";
