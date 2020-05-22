@@ -12,12 +12,12 @@ Metadata:
     Author: Cyrus Wong
     SpdxLicenseId: Apache-2.0
     LicenseUrl: s3://cyruswong-sam-repo/175792518e4ac015ab6696d16c4f607e
-    ReadmeUrl: s3://cyruswong-sam-repo/64c2d61c0c4dfbba52cd9a719feb0988
+    ReadmeUrl: s3://cyruswong-sam-repo/c029e994fb0fec6d341fb68dcc8152c3
     Labels:
     - cloudformation
     - AWS_Educate
     HomePageUrl: https://github.com/wongcyrus/managed-aws-educate-classroom
-    SemanticVersion: 0.0.1
+    SemanticVersion: 0.0.2
     SourceCodeUrl: https://github.com/wongcyrus/managed-aws-educate-classroom
   AWS::CloudFormation::Interface:
     ParameterGroups:
@@ -165,7 +165,7 @@ Resources:
   SetupStudentAccountFunction:
     Type: AWS::Serverless::Function
     Properties:
-      CodeUri: s3://cyruswong-sam-repo/023d20147ff5f409f09253597c211442
+      CodeUri: s3://cyruswong-sam-repo/618ff812fb632969eaaa72e1d244c64a
       Policies:
       - AmazonDynamoDBFullAccess
       - S3ReadPolicy:
@@ -195,7 +195,7 @@ Resources:
   StartInstanceFunction:
     Type: AWS::Serverless::Function
     Properties:
-      CodeUri: s3://cyruswong-sam-repo/830f68a11ff5eeb9e69741d87b285468
+      CodeUri: s3://cyruswong-sam-repo/d885f3eb6626ad1d1107ccec18c2901e
       Policies:
       - AmazonDynamoDBFullAccess
       - Version: '2012-10-17'
@@ -330,7 +330,7 @@ Resources:
   StopInstanceFunction:
     Type: AWS::Serverless::Function
     Properties:
-      CodeUri: s3://cyruswong-sam-repo/5171129951f84ebd2253090e319a027e
+      CodeUri: s3://cyruswong-sam-repo/db259feef615b18cf90ec32f81807932
       Policies:
       - AmazonDynamoDBFullAccess
       - Version: '2012-10-17'
@@ -480,7 +480,8 @@ Resources:
   SetupStudentAccountWebUiFunction:
     Type: AWS::Serverless::Function
     Properties:
-      CodeUri: s3://cyruswong-sam-repo/e547a72488c6eb8844d6d0621f5762d2
+      CodeUri: s3://cyruswong-sam-repo/ff0a410ea8550667dac4e575b909f2be
+      Handler: setupStudentAccount.lambdaHandler
       Policies:
       - LambdaInvokePolicy:
           FunctionName:
@@ -502,7 +503,7 @@ Resources:
   GetRdpFileFunction:
     Type: AWS::Serverless::Function
     Properties:
-      CodeUri: s3://cyruswong-sam-repo/e547a72488c6eb8844d6d0621f5762d2
+      CodeUri: s3://cyruswong-sam-repo/ff0a410ea8550667dac4e575b909f2be
       Handler: getRdp.lambdaHandler
       Events:
         ExplicitApi:
@@ -515,7 +516,7 @@ Resources:
   GetPemKeyFileFunction:
     Type: AWS::Serverless::Function
     Properties:
-      CodeUri: s3://cyruswong-sam-repo/e547a72488c6eb8844d6d0621f5762d2
+      CodeUri: s3://cyruswong-sam-repo/ff0a410ea8550667dac4e575b909f2be
       Handler: getPemKey.lambdaHandler
       Events:
         ExplicitApi:
@@ -525,6 +526,29 @@ Resources:
               Ref: HttpApi
             Method: GET
             Path: /pem/key.pem
+  GetCrossAccountRoleWebUiFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: s3://cyruswong-sam-repo/ff0a410ea8550667dac4e575b909f2be
+      Handler: getCrossAccount.lambdaHandler
+      Policies:
+      - DynamoDBReadPolicy:
+          TableName:
+            Ref: StudentAccountTable
+      Environment:
+        Variables:
+          SetupStudentAccountFunction:
+            Fn::GetAtt:
+            - SetupStudentAccountFunction
+            - Arn
+      Events:
+        ExplicitApi:
+          Type: HttpApi
+          Properties:
+            ApiId:
+              Ref: HttpApi
+            Method: ANY
+            Path: /getCrossAccount.html
   CalendarEventsApplication:
     Type: AWS::Serverless::Application
     Condition: UseCalendarTrigger
@@ -636,6 +660,10 @@ Outputs:
     Value:
       Ref: ClassroomBucket
   StudentRegistrationUrl:
-    Description: URL of your API endpoint
+    Description: URL of your Student to Signup and studentEmail is optional.
     Value:
-      Fn::Sub: https://${HttpApi}.execute-api.${AWS::Region}.${AWS::URLSuffix}/?classroomName=ChangeToYourClassName
+      Fn::Sub: https://${HttpApi}.execute-api.${AWS::Region}.${AWS::URLSuffix}/?classroomName=ChangeToYourClassName&studentEmail=YourStudentEmailAddress
+  GetCrossAccountAssumeRoleUrls:
+    Description: URL for teacher to get the assume role URL for your student account.
+    Value:
+      Fn::Sub: https://${HttpApi}.execute-api.${AWS::Region}.${AWS::URLSuffix}/getCrossAccount.html?classroomName=ChangeToYourClassName

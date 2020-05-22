@@ -35,6 +35,9 @@ exports.lambdaHandler = async(event, context) => {
         }
         else {
             let classroomName = encodedStr(event.queryStringParameters.classroomName);
+            let studentEmail = "";
+            if (event.queryStringParameters.studentEmail)
+                studentEmail = event.queryStringParameters.studentEmail.toLowerCase();
             return {
                 "headers": {
                     "Content-Type": " text/html"
@@ -51,9 +54,9 @@ exports.lambdaHandler = async(event, context) => {
         <form method="POST" action="/">
             <input type="hidden" id="classroomName" name="classroomName" value="${classroomName}">
             <label for="Email">Email:</label><br>
-            <input type="email" id="email" name="email" size="50" value=""><br>
+            <input type="email" id="email" name="email" size="50" value="${studentEmail}" required><br>
             <label for="credentials">Credentials:</label><br>
-            <textarea id="rawKey" name="rawKey" value="" rows="20" cols="100"></textarea><br>
+            <textarea id="rawKey" name="rawKey" rows="10" cols="100" required></textarea><br>
           <input type="submit" value="Submit">
         </form> 
         <footer>
