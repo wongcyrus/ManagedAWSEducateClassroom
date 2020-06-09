@@ -8,16 +8,17 @@ const studentAccountTable = process.env.StudentAccountTable;
 
 exports.lambdaHandler = async(event, context) => {
     console.log(event);
-    let { classroomName } = event;
+    let { classroomName, functionName } = event;
 
-    if (!classroomName && event.Records) {
+    if (event.Records) {
         let snsMessage = await common.getSnsMessage(event);
         if (snsMessage.Source === "Calendar-Trigger") {
-            ({ classroomName } = JSON.parse(snsMessage.desc));
+            ({ classroomName, functionName } = JSON.parse(snsMessage.desc));
         }
         else {
-            let { message } = await common.getSesInboxMessage(event);
+            let { message, emailBody } = await common.getSesInboxMessage(event);
             classroomName = message.slots.classroomName;
+            functionName = emailBody.split('\n')[0].trim();
         }
     }
 
@@ -57,7 +58,7 @@ exports.lambdaHandler = async(event, context) => {
         };
 
         params = {
-            FunctionName: "cloudprojectmarker-CloudProjectMarkerFunction-EBTPD9NF2O6A",
+            FunctionName: functionName,
             Payload: JSON.stringify(eventArgs),
             InvocationType: "RequestResponse",
         };

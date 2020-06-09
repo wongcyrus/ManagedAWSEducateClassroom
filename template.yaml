@@ -361,6 +361,49 @@ Resources:
             BatchSize: 1
 
 # Grader Function
+  GradeClassroomQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      VisibilityTimeout: 180
+      RedrivePolicy: 
+        deadLetterTargetArn: !GetAtt GradeClassroomDeadLetterQueue.Arn
+        maxReceiveCount: 3    
+  GradeClassroomDeadLetterQueue: 
+    Type: AWS::SQS::Queue
+
+  GradeClassroomSubscription:
+    Type: 'AWS::SNS::Subscription'
+    Condition: UseAwsSesInbox    
+    Properties:
+      TopicArn: !Ref SesInboxTopic
+      Endpoint: !GetAtt [GradeClassroomQueue, Arn]
+      Protocol: sqs
+      FilterPolicy:
+        receiver:
+          - !Ref TeacherCommandEmail
+        intentName:
+          - GradeClassroomIntent
+        senderEmailDomain: !Split [ "," , !Ref TeacherEmailDomains]
+          
+  GradeClassroomQueuePolicy:
+    Type: AWS::SQS::QueuePolicy
+    Condition: UseAwsSesInbox
+    Properties:
+      Queues: [!Ref 'GradeClassroomQueue']
+      PolicyDocument:
+        Version: '2008-10-17'
+        Id: PublicationPolicy
+        Statement:
+        - Sid: Allow-SNS-SendMessage
+          Effect: Allow
+          Principal:
+            AWS: '*'
+          Action: ['sqs:SendMessage']
+          Resource: !GetAtt GradeClassroomQueue.Arn
+          Condition:
+            ArnEquals:
+              aws:SourceArn: !Ref 'SesInboxTopic'  
+
   GradeClassroomFunction:
     Type: AWS::Serverless::Function
     Properties:
@@ -379,6 +422,12 @@ Resources:
             - Effect: Allow
               Action: "lambda:listFunctions"
               Resource: "*"
+      Events:
+        SQSEvent:
+          Type: SQS
+          Properties:
+            Queue: !GetAtt GradeClassroomQueue.Arn
+            BatchSize: 1              
 # Database        
   StudentAccountTable: 
     Type: AWS::DynamoDB::Table
@@ -546,7 +595,33 @@ Resources:
           Condition:
             ArnEquals:
               aws:SourceArn: !GetAtt [CalendarEventsApplication, Outputs.CanlenderEventStartTopic]
-        
+
+  GradeClassroomCalendarEventsSubscription:
+    Type: 'AWS::SNS::Subscription'
+    Condition: UseCalendarTrigger
+    Properties:
+      TopicArn: !GetAtt [CalendarEventsApplication, Outputs.CanlenderEventStartTopic]
+      Endpoint: !GetAtt [GradeClassroomQueue, Arn]
+      Protocol: sqs
+      
+  CreateClassroomCalendarEventsQueuePolicy:
+    Type: AWS::SQS::QueuePolicy
+    Condition: UseCalendarTrigger
+    Properties:
+      Queues: [!Ref 'GradeClassroomQueue']
+      PolicyDocument:
+        Version: '2008-10-17'
+        Id: PublicationPolicy
+        Statement:
+        - Sid: Allow-SNS-SendMessage
+          Effect: Allow
+          Principal:
+            AWS: '*'
+          Action: ['sqs:SendMessage']
+          Resource: !GetAtt GradeClassroomQueue.Arn
+          Condition:
+            ArnEquals:
+              aws:SourceArn: !GetAtt [CalendarEventsApplication, Outputs.CanlenderEventStartTopic]        
 Outputs:
   SetupStudentAccountFunction:
     Description: "SetupStudentAccountFunction"
@@ -557,6 +632,9 @@ Outputs:
   DeleteClassroomFunction:
     Description: "DeleteClassroomFunction"
     Value: !GetAtt DeleteClassroomFunction.Arn
+  GradeClassroomFunction:
+    Description: "GradeClassroomFunction"
+    Value: !GetAtt GradeClassroomFunction.Arn   
   ClassroomBucket:
     Value: !Ref ClassroomBucket
   StudentRegistrationUrl:
