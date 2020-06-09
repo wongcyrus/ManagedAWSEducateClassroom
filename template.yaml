@@ -153,7 +153,8 @@ Resources:
     Properties:
       CodeUri: setup-student-account/
       Policies:
-        - AmazonDynamoDBFullAccess
+        - DynamoDBCrudPolicy:
+            TableName: !Ref StudentAccountTable
         - S3ReadPolicy:
             BucketName: !Ref ClassroomBucket
         - !If [UseAwsSesInbox, S3ReadPolicy:{ BucketName: !Ref 'BucketName'}, !Ref "AWS::NoValue"]
@@ -175,7 +176,8 @@ Resources:
     Properties:
       CodeUri: start-instance/
       Policies:
-        - AmazonDynamoDBFullAccess
+        - DynamoDBCrudPolicy:
+            TableName: !Ref StudentAccountTable
         - Version: '2012-10-17'
           Statement:
             - Effect: Allow
@@ -187,7 +189,8 @@ Resources:
     Properties:
       CodeUri: create-student-stack/
       Policies:
-        - AmazonDynamoDBFullAccess
+        - DynamoDBCrudPolicy:
+            TableName: !Ref StudentAccountTable
         - S3ReadPolicy:
             BucketName: !Ref ClassroomBucket
         - !If [UseAwsSesInbox, S3ReadPolicy:{ BucketName: !Ref 'BucketName'}, !Ref "AWS::NoValue"]
@@ -248,7 +251,8 @@ Resources:
     Properties:
       CodeUri: create-classroom/
       Policies:
-        - AmazonDynamoDBFullAccess
+        - DynamoDBCrudPolicy:
+            TableName: !Ref StudentAccountTable
         - S3ReadPolicy:
             BucketName: !Ref ClassroomBucket
         - !If [UseAwsSesInbox, S3ReadPolicy:{ BucketName: !Ref 'BucketName'}, !Ref "AWS::NoValue"]
@@ -273,7 +277,8 @@ Resources:
     Properties:
       CodeUri: stop-instance/
       Policies:
-        - AmazonDynamoDBFullAccess
+        - DynamoDBCrudPolicy:
+            TableName: !Ref StudentAccountTable
         - Version: '2012-10-17'
           Statement:
             - Effect: Allow
@@ -285,7 +290,8 @@ Resources:
     Properties:
       CodeUri: delete-student-stack/
       Policies:
-        - AmazonDynamoDBFullAccess
+        - DynamoDBCrudPolicy:
+            TableName: !Ref StudentAccountTable
         - S3ReadPolicy:
             BucketName: !Ref ClassroomBucket
         - Version: '2012-10-17'
@@ -341,7 +347,8 @@ Resources:
     Properties:
       CodeUri: delete-classroom/
       Policies:
-        - AmazonDynamoDBFullAccess
+        - DynamoDBCrudPolicy:
+            TableName: !Ref StudentAccountTable
         - S3ReadPolicy:
             BucketName: !Ref ClassroomBucket
         - !If [UseAwsSesInbox, S3ReadPolicy:{ BucketName: !Ref 'BucketName'}, !Ref "AWS::NoValue"]
@@ -409,7 +416,8 @@ Resources:
     Properties:
       CodeUri: grade-classroom/
       Policies:
-        - AmazonDynamoDBFullAccess
+        - DynamoDBCrudPolicy:
+            TableName: !Ref StudentAccountTable
         - !If [UseAwsSesInbox, S3ReadPolicy:{ BucketName: !Ref 'BucketName'}, !Ref "AWS::NoValue"]
         - Version: '2012-10-17'
           Statement:
