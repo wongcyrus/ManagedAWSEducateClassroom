@@ -359,7 +359,26 @@ Resources:
           Properties:
             Queue: !GetAtt DeleteClassroomQueue.Arn
             BatchSize: 1
-            
+
+# Grader Function
+  GradeClassroomFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: grade-classroom/
+      Policies:
+        - AmazonDynamoDBFullAccess
+        - !If [UseAwsSesInbox, S3ReadPolicy:{ BucketName: !Ref 'BucketName'}, !Ref "AWS::NoValue"]
+        - Version: '2012-10-17'
+          Statement:
+            - Effect: Allow
+              Action: "sts:AssumeRole"
+              Resource: !Sub "arn:aws:iam::*:role/crossaccountteacher${AWS::AccountId}"            
+            - Effect: Allow
+              Action: "lambda:InvokeFunction"
+              Resource: !Sub "arn:${AWS::Partition}:lambda:${AWS::Region}:${AWS::AccountId}:function:*MarkerFunction*"
+            - Effect: Allow
+              Action: "lambda:listFunctions"
+              Resource: "*"
 # Database        
   StudentAccountTable: 
     Type: AWS::DynamoDB::Table
