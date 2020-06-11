@@ -64,9 +64,15 @@ exports.lambdaHandler = async(event, context) => {
         };
 
         const testResult = await lambda.invoke(params).promise();
-        const xunitTestReport = JSON.parse(testResult.Payload).testResult;
+        let testReport = JSON.parse(testResult.Payload).testResult;
+
+        testReport = JSON.parse(testReport);
+        testReport.classroomName = studentAccount.Item.classroomName;
+        testReport.email = studentAccount.Item.email;
+        testReport.gradeFunction = functionName;
+
         params = {
-            Message: xunitTestReport,
+            Message: JSON.stringify(testReport),
             TopicArn: studentAccount.Item.notifyStudentTopic
         };
         const sns = new AWS.SNS({
@@ -78,12 +84,28 @@ exports.lambdaHandler = async(event, context) => {
         const snsResult = await sns.publish(params).promise();
         console.log(snsResult);
 
-        return xunitTestReport;
+        return testReport;
     };
 
     console.log("Mark All Student Accounts.");
-    let result = students.Items.map(s => gradeClassroom(s.email));
-    console.log(await Promise.all(result));
+    let rawResults = await Promise.all(students.Items.map(s => gradeClassroom(s.email)));
+    const isEmpty = obj => Object.keys(obj).length === 0;
 
-    return "OK";
+    const marks = rawResults
+        .map(c => ({
+            email: c.email,
+            tests: c.tests.map(a => ({ test: a.fullTitle.trim(), pass: isEmpty(a.err) }))
+        }));
+
+
+    const results = {
+        classroomName,
+        gradeFunction: functionName,
+        at: new Date(),
+        marks
+    };
+
+    console.log(results);
+
+    return results;
 };

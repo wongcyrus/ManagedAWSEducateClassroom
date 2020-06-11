@@ -153,8 +153,6 @@ Resources:
                     )
       Runtime: "python3.6"
       Timeout: "90"
-      TracingConfig:
-        Mode: "Active"
 
   # SNS topic and inline subscription to forward events to Lambda function
   SNSCloudFormationTopic:
