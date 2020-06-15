@@ -85,7 +85,7 @@ exports.lambdaHandler = async(event, context) => {
         const snsResult = await sns.publish(params).promise();
         console.log(snsResult);
 
-        common.putJsonToS3(classroomGradeBucket, classroomName + "/" + functionName + "/" + email + "/" + time + ".json", testReport);
+        await common.putJsonToS3(classroomGradeBucket, classroomName + "/" + functionName + "/" + email + "/" + time + ".json", testReport);
         return testReport;
     };
 
@@ -109,8 +109,8 @@ exports.lambdaHandler = async(event, context) => {
     };
 
     console.log(results);
-    common.putJsonToS3(classroomGradeBucket, classroomName + "/" + functionName + "/" + "classReport.json", results);
-    common.putJsonToS3(classroomGradeBucket, classroomName + "/" + functionName + "/" + "classReport" + time + ".json", results);
+    await common.putJsonToS3(classroomGradeBucket, classroomName + "/" + functionName + "/" + "classReport.json", results);
+    await common.putJsonToS3(classroomGradeBucket, classroomName + "/" + functionName + "/" + "classReport" + time + ".json", results);
     return results;
 };
 
