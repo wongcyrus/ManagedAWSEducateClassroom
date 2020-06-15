@@ -11,6 +11,17 @@ module.exports.getS3File = async(bucket, key) => {
     return response.Body.toString();
 };
 
+module.exports.putJsonToS3 = async(bucket, key, json) => {
+    const response = s3.putObject({
+            Bucket: bucket,
+            Key: key,
+            Body: JSON.stringify(json),
+            ContentType: "application/json"
+        }
+    ).promise();
+    return response;
+};
+
 module.exports.getSnsMessage = async(event) => {
     return JSON.parse((JSON.parse(event.Records[0].body)).Message);
 };
@@ -24,4 +35,3 @@ module.exports.getSesInboxMessage = async(event) => {
     console.log(emailBody);
     return { message, emailBody };
 };
-

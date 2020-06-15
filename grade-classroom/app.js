@@ -4,6 +4,7 @@ const lambda = new AWS.Lambda();
 const common = require('/opt/common');
 
 const studentAccountTable = process.env.StudentAccountTable;
+const classroomGradeBucket = process.env.ClassroomGradeBucket;
 
 
 exports.lambdaHandler = async(event, context) => {
@@ -34,7 +35,7 @@ exports.lambdaHandler = async(event, context) => {
     console.log(students);
     console.log(classroomName);
     const awsAccountId = context.invokedFunctionArn.split(":")[4];
-    const gradeClassroom = async email => {
+    const gradeClassroom = async(email, time) => {
 
         let studentAccount = await dynamo.get({
             TableName: studentAccountTable,
@@ -84,11 +85,13 @@ exports.lambdaHandler = async(event, context) => {
         const snsResult = await sns.publish(params).promise();
         console.log(snsResult);
 
+        common.putJsonToS3(classroomGradeBucket, classroomName + "/" + functionName + "/" + email + "/" + time + ".json", testReport);
         return testReport;
     };
 
     console.log("Mark All Student Accounts.");
-    let rawResults = await Promise.all(students.Items.map(s => gradeClassroom(s.email)));
+    const time = getFormattedTime();
+    let rawResults = await Promise.all(students.Items.map(s => gradeClassroom(s.email, time)));
     const isEmpty = obj => Object.keys(obj).length === 0;
 
     const marks = rawResults
@@ -106,6 +109,16 @@ exports.lambdaHandler = async(event, context) => {
     };
 
     console.log(results);
-
+    common.putJsonToS3(classroomGradeBucket, classroomName + "/" + functionName + "/" + "classReport.json", results);
+    common.putJsonToS3(classroomGradeBucket, classroomName + "/" + functionName + "/" + "classReport" + time + ".json", results);
     return results;
+};
+
+const getFormattedTime = () => {
+    const today = new Date();
+    const y = today.getFullYear();
+    const m = today.getMonth() + 1;
+    const d = today.getDate();
+    const h = today.getHours();
+    return y + "-" + m + "-" + d + "-" + h;
 };
