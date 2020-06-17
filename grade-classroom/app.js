@@ -72,8 +72,13 @@ exports.lambdaHandler = async(event, context) => {
         testReport.email = studentAccount.Item.email;
         testReport.gradeFunction = functionName;
 
+        await common.putJsonToS3(classroomGradeBucket, classroomName + "/" + functionName + "/" + email + "/" + time + ".json", testReport);
+
+        delete testReport.pending;
+        delete testReport.failures;
+        delete testReport.passes;
         params = {
-            Subject: studentAccount.Item.classroomName + " Project Mark on "+time+" with Grader " + functionName,
+            Subject: studentAccount.Item.classroomName + " Project Mark on " + time + " with Grader " + functionName,
             Message: JSON.stringify(testReport),
             TopicArn: studentAccount.Item.notifyStudentTopic
         };
@@ -86,7 +91,6 @@ exports.lambdaHandler = async(event, context) => {
         const snsResult = await sns.publish(params).promise();
         console.log(snsResult);
 
-        await common.putJsonToS3(classroomGradeBucket, classroomName + "/" + functionName + "/" + email + "/" + time + ".json", testReport);
         return testReport;
     };
 
