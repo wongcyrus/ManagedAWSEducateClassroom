@@ -1,7 +1,7 @@
 {
-  "name": "delete-classroom",
+  "name": "grade-classroom",
   "version": "1.0.0",
-  "description": "delete-classroom",
+  "description": "grade-classroom",
   "main": "app.js",
   "author": "SAM CLI",
   "license": "MIT",

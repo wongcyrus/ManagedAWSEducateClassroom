@@ -73,6 +73,7 @@ exports.lambdaHandler = async(event, context) => {
         testReport.gradeFunction = functionName;
 
         params = {
+            Subject: studentAccount.Item.classroomName + " Project Mark on "+time+" with Grader " + functionName,
             Message: JSON.stringify(testReport),
             TopicArn: studentAccount.Item.notifyStudentTopic
         };

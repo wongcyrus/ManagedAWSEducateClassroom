@@ -57,7 +57,7 @@ exports.lambdaHandler = async(event, context) => {
 
             return {
                 "headers": {
-                    "Content-Type": " text/html"
+                    "Content-Type": "text/html"
                 },
                 "statusCode": 200,
                 "body": `

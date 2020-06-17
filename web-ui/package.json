@@ -5,7 +5,8 @@
   "main": "app.js",
   "author": "SAM CLI",
   "license": "MIT",
-  "dependencies": {},
+  "dependencies": {
+  },
   "scripts": {
     "test": "mocha tests/unit/"
   },

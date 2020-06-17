@@ -12,7 +12,7 @@ username:s:Administrator
     const rdpFile = rdpTemplate.replace("###PublicDNS###",publicDNS);
     return {
         "headers": {
-            "Content-Type": " application/x-rdp"
+            "Content-Type": "application/x-rdp"
         },
         "statusCode": 200,
         "body": rdpFile

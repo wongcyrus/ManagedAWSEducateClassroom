@@ -677,7 +677,7 @@ Outputs:
   StudentRegistrationUrl:
     Description: URL of your Student to Signup and studentEmail is optional.
     Value: !Sub 'https://${HttpApi}.execute-api.${AWS::Region}.${AWS::URLSuffix}/?classroomName=ChangeToYourClassName&studentEmail=YourStudentEmailAddress'
-  GetCrossAccountAssumeRoleUrls:
+  GetCrossAccountAssumeRoleUrl:
     Description: URL for teacher to get the assume role URL for your student account.
     Value: !Sub 'https://${HttpApi}.execute-api.${AWS::Region}.${AWS::URLSuffix}/getCrossAccount.html?classroomName=ChangeToYourClassName'
   ClassroomGradeBucketBucketSecureURL:
