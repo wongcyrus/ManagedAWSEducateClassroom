@@ -63,7 +63,9 @@ exports.lambdaHandler = async(event, context) => {
             Payload: JSON.stringify(eventArgs),
             InvocationType: "RequestResponse",
         };
-
+        
+        //Todo: check why tests result is different in student's account between cold start and warn start.
+        await lambda.invoke(params).promise();
         const testResult = await lambda.invoke(params).promise();
         let testReport = JSON.parse(testResult.Payload).testResult;
 
@@ -78,7 +80,6 @@ exports.lambdaHandler = async(event, context) => {
         delete testReport.failures;
         delete testReport.passes;
         params = {
-            Subject: studentAccount.Item.classroomName + " Project Mark on " + time + " with Grader " + functionName,
             Message: JSON.stringify(testReport),
             TopicArn: studentAccount.Item.notifyStudentTopic
         };
