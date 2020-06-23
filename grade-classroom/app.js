@@ -32,8 +32,8 @@ exports.lambdaHandler = async(event, context) => {
     };
 
     let students = await dynamo.query(params).promise();
-    console.log(students);
-    console.log(classroomName);
+    //console.log(students);
+    // console.log(classroomName);
     const awsAccountId = context.invokedFunctionArn.split(":")[4];
     const gradeClassroom = async(email, time) => {
 
@@ -63,9 +63,7 @@ exports.lambdaHandler = async(event, context) => {
             Payload: JSON.stringify(eventArgs),
             InvocationType: "RequestResponse",
         };
-        
-        //Todo: check why tests result is different in student's account between cold start and warn start.
-        await lambda.invoke(params).promise();
+
         const testResult = await lambda.invoke(params).promise();
         let testReport = JSON.parse(testResult.Payload).testResult;
 
@@ -117,7 +115,72 @@ exports.lambdaHandler = async(event, context) => {
     console.log(results);
     await common.putJsonToS3(classroomGradeBucket, classroomName + "/" + functionName + "/" + "classReport.json", results);
     await common.putJsonToS3(classroomGradeBucket, classroomName + "/" + functionName + "/" + "classReport" + time + ".json", results);
+
+    await generateMarksheet(classroomName, functionName);
+
     return results;
+};
+
+const generateMarksheet = async(classroomName, functionName) => {
+    const lsResult = await common.lsS3Objects(classroomGradeBucket, "/" + classroomName + "/" + functionName + "/");
+    const markReports = lsResult.files.filter(c => c.includes("classReport"));
+
+    const dailyMarks = await Promise.all(markReports.map(async k => JSON.parse(await common.getS3File(classroomGradeBucket, k))));
+    const allTests = dailyMarks.map(c => c.marks).map(c => c.map(a => ({ email: a.email, passedTests: a.tests.filter(a => a.pass).map(a => a.test) })));
+
+    const emailAndpassedTest = allTests.flatMap(testReport => testReport.flatMap(student => student.passedTests.map(c => ({ email: student.email, passedTest: c }))));
+
+    let emailSet = new Set();
+    let testSet = new Set();
+
+    emailAndpassedTest.forEach(c => {
+        emailSet.add(c.email);
+        testSet.add(c.passedTest);
+    });
+    const emails = Array.from(emailSet).sort();
+    const tests = Array.from(testSet).sort();
+
+    const emailTestMark = tests.flatMap(t => emails.map(e => ({ test: t, email: e, mark: emailAndpassedTest.filter(c => c.email === e && c.passedTest === t).length })));
+
+    let marksheets = [];
+    let row = [];
+    marksheets.push(["email", "mark", ...tests]);
+    for (const email of emails) {
+        const marks = tests.map(t => emailTestMark.find(c => c.test === t && c.email === email).mark);
+        row = [email, marks.reduce((a, b) => a + b, 0), ...marks];
+        marksheets.push(row);
+    }
+    await common.putJsonToS3(classroomGradeBucket, classroomName + "/" + functionName + "/" + "marksheet.json", { marksheets });
+
+    let htmlData = [];
+    for (const email of emails) {
+        const marks = tests.map(t => ({ test: t.replace(/\W+/g, ""), mark: emailTestMark.find(c => c.test === t && c.email === email).mark }));
+        row = { email, mark: marks.reduce((a, b) => a + b.mark, 0) };
+        row = Object.assign(row, marks.reduce((prev, curr) => { prev[curr.test] = curr.mark; return prev; }, {}));
+        htmlData.push(row);
+    }
+    const html = `
+<!DOCTYPE html>
+<html>
+<head>
+<title>${classroomName} - ${functionName} Cumulative Marksheet</title>
+<link href="https://unpkg.com/tabulator-tables@4.7.0/dist/css/tabulator.min.css" rel="stylesheet">
+<script type="text/javascript" src="https://unpkg.com/tabulator-tables@4.7.0/dist/js/tabulator.min.js"></script>
+</head>
+<body>
+<h1>${classroomName} - ${functionName} Cumulative Marksheet</h1>
+<div id="table"></div>
+<script>
+let tabledata = ${JSON.stringify(htmlData)};
+let table = new Tabulator("#table", {
+    data:tabledata,
+    autoColumns:true,
+});
+</script>
+</body>
+</html>
+`;
+    await common.putHtmlToS3(classroomGradeBucket, classroomName + "/" + functionName + "/" + "marksheet.html", html);
 };
 
 const getFormattedTime = () => {
