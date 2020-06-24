@@ -3,7 +3,7 @@ const fs = require('fs');
 const studentAccountTable = process.env.StudentAccountTable;
 
 const dynamo = new AWS.DynamoDB.DocumentClient();
-const common = require('/opt/common');
+const common = require('/opt/nodejs/common');
 
 const extractKeys = rawKey => {
     const accessKeyStartIndex = rawKey.indexOf("aws_access_key_id=") + "aws_access_key_id=".length;

@@ -1,7 +1,10 @@
 const AWS = require('aws-sdk');
 const lambda = new AWS.Lambda();
 const querystring = require('querystring');
+const axios = require('axios');
 const setupStudentAccountFunctionArn = process.env.SetupStudentAccountFunction;
+const recaptchaSiteKey = process.env.RecaptchaSiteKey;
+const recaptchaSercetKey = process.env.RecaptchaSercetKey;
 
 const encodedStr = rawStr => rawStr.replace(/[\u00A0-\u9999<>\&]/gim, function(i) {
     return '&#' + i.charCodeAt(0) + ';';
@@ -38,6 +41,30 @@ exports.lambdaHandler = async(event, context) => {
             let studentEmail = "";
             if (event.queryStringParameters.studentEmail)
                 studentEmail = event.queryStringParameters.studentEmail.toLowerCase();
+            let recaptcha = '<input type="submit" value="Submit">';
+            if (recaptchaSiteKey !== "") {
+                recaptcha = `
+<script>
+   function onSubmit(token) {
+     document.getElementById("keyform").submit();
+   }
+    grecaptcha.ready(function() {
+    // do request for recaptcha token
+    // response is promise with passed token
+        grecaptcha.execute('${recaptchaSiteKey}', {action:'validate_captcha'})
+                  .then(function(token) {
+            // add token value to form
+            document.getElementById('g-recaptcha-response').value = token;
+        });
+    });   
+</script>
+<button class="g-recaptcha" 
+        data-sitekey="${recaptchaSiteKey}" 
+        data-callback='onSubmit' 
+        data-action='submit'>Submit</button>
+`;
+            }
+            
             return {
                 "headers": {
                     "Content-Type": " text/html"
@@ -48,16 +75,20 @@ exports.lambdaHandler = async(event, context) => {
 <html>
     <head>
       <title>Managed AWS Educate Classroom Student Account Registration</title>
+        <script src="https://www.google.com/recaptcha/api.js?render=${recaptchaSiteKey}"></script>
+        <meta charset="utf-8"/>
     </head>
     <body>
         <h2>Managed AWS Educate Classroom Student Account Registration - ${classroomName}</h2>
-        <form method="POST" action="/">
+        <form id="keyform" method="POST" action="/">
+            <input type="hidden" id="g-recaptcha-response" name="g-recaptcha-response">
+            <input type="hidden" name="action" value="validate_captcha">
             <input type="hidden" id="classroomName" name="classroomName" value="${classroomName}">
             <label for="Email">Email:</label><br>
             <input type="email" id="email" name="email" size="50" value="${studentEmail}" required><br>
             <label for="credentials">Credentials:</label><br>
             <textarea id="rawKey" name="rawKey" rows="10" cols="100" required></textarea><br>
-          <input type="submit" value="Submit">
+            ${recaptcha}
         </form> 
         <footer>
           <p>Developed by <a href="https://www.vtc.edu.hk/admission/en/programme/it114115-higher-diploma-in-cloud-and-data-centre-administration/"> Higher Diploma in Cloud and Data Centre Administration Team.</a></p>
@@ -73,7 +104,21 @@ exports.lambdaHandler = async(event, context) => {
         const body = buff.toString('ascii');
         const parameters = querystring.parse(body);
         console.log(parameters);
+        if (recaptchaSercetKey !== "") {
+            const token =  parameters["g-recaptcha-response"][0];
+            let verifyResult = await axios.post(`https://www.google.com/recaptcha/api/siteverify?secret=${recaptchaSercetKey}&response=${token}`);
 
+            console.log(verifyResult);
+            if (verifyResult.status !== 200 || !verifyResult.data.success) {
+                return {
+                    "headers": {
+                        "Content-Type": "text/html"
+                    },
+                    "statusCode": 200,
+                    "body": "recaptcha error!",
+                };
+            }
+        }
         console.log(typeof parameters.rawKey);
         console.log(parameters.rawKey.replace(/(\r\n|\n|\r)/gm, ""));
         parameters.rawKey = parameters.rawKey.replace(/(\r\n|\n|\r)/gm, "");

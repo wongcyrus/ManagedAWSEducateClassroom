@@ -1,6 +1,6 @@
 const AWS = require('aws-sdk');
 const dynamo = new AWS.DynamoDB.DocumentClient();
-const common = require('/opt/common');
+const common = require('/opt/nodejs/common');
 
 const studentAccountTable = process.env.StudentAccountTable;
 const rdpFileUrl = process.env.RdpFileUrl;

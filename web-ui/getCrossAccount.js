@@ -1,5 +1,4 @@
 const AWS = require('aws-sdk');
-const common = require('/opt/common');
 const dynamo = new AWS.DynamoDB.DocumentClient();
 const studentAccountTable = process.env.StudentAccountTable;
 

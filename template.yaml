@@ -37,7 +37,13 @@ Metadata:
           default: "Student Email Settings (Optional)"
         Parameters: 
           - StudentCommandEmail
-          - StudentEmailDomains          
+          - StudentEmailDomains    
+      - 
+        Label: 
+          default: "reCAPTCHA v3 (Optional)"
+        Parameters: 
+          - RecaptchaSiteKey
+          - RecaptchaSercetKey             
     ParameterLabels:
       CalendarUrl:
         default: "Public Class Schedule Calendar Url"
@@ -52,8 +58,11 @@ Metadata:
       TeacherCommandEmail: 
         default: "Teacher Command Email Address"        
       TeacherEmailDomains: 
-        default: "White List Teacher email domain" 
-        
+        default: "White List Teacher email domain"
+      RecaptchaSiteKey: 
+        default: "reCAPTCHA Site Key"        
+      RecaptchaSercetKey: 
+        default: "reCAPTCHA Sercet Key"        
 Parameters:
   SesInboxTopic:
     Type: String
@@ -76,7 +85,14 @@ Parameters:
   TeacherEmailDomains:
     Type: String
     Default: ""
-    
+  RecaptchaSiteKey:
+    Type: String
+    Default: ""
+    NoEcho: true
+  RecaptchaSercetKey:
+    Type: String
+    Default: ""
+    NoEcho: true       
 Globals:
   Function:
     Handler: app.lambdaHandler
@@ -100,7 +116,7 @@ Resources:
     Properties:
       LayerName: managed-aws-educate-classroom-common-layer
       Description: Common code.
-      ContentUri: layer/
+      ContentUri: layer/.
       CompatibleRuntimes:
         - nodejs12.x
 
@@ -514,7 +530,9 @@ Resources:
             FunctionName: !Ref SetupStudentAccountFunction
       Environment:
         Variables:
-          SetupStudentAccountFunction: !GetAtt SetupStudentAccountFunction.Arn  
+          SetupStudentAccountFunction: !GetAtt SetupStudentAccountFunction.Arn
+          RecaptchaSiteKey: !Ref RecaptchaSiteKey
+          RecaptchaSercetKey: !Ref RecaptchaSercetKey
       Events:
         ExplicitApi:
           Type: HttpApi

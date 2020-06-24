@@ -1,7 +1,7 @@
 const AWS = require('aws-sdk');
 const dynamo = new AWS.DynamoDB.DocumentClient();
 const lambda = new AWS.Lambda();
-const common = require('/opt/common');
+const common = require('/opt/nodejs/common');
 
 const studentAccountTable = process.env.StudentAccountTable;
 const classroomGradeBucket = process.env.ClassroomGradeBucket;
@@ -45,52 +45,58 @@ exports.lambdaHandler = async(event, context) => {
             }
         }).promise();
         console.log(studentAccount);
+        try {
+            const sts = new AWS.STS();
+            const token = await sts.assumeRole({
+                RoleArn: `arn:aws:iam::${studentAccount.Item.awsAccountId}:role/crossaccountteacher${awsAccountId}`,
+                RoleSessionName: 'studentAccount'
+            }).promise();
 
-        const sts = new AWS.STS();
-        const token = await sts.assumeRole({
-            RoleArn: `arn:aws:iam::${studentAccount.Item.awsAccountId}:role/crossaccountteacher${awsAccountId}`,
-            RoleSessionName: 'studentAccount'
-        }).promise();
+            const eventArgs = {
+                aws_access_key: token.Credentials.AccessKeyId,
+                aws_secret_access_key: token.Credentials.SecretAccessKey,
+                aws_session_token: token.Credentials.SessionToken,
+            };
 
-        const eventArgs = {
-            aws_access_key: token.Credentials.AccessKeyId,
-            aws_secret_access_key: token.Credentials.SecretAccessKey,
-            aws_session_token: token.Credentials.SessionToken,
-        };
+            params = {
+                FunctionName: functionName,
+                Payload: JSON.stringify(eventArgs),
+                InvocationType: "RequestResponse",
+            };
 
-        params = {
-            FunctionName: functionName,
-            Payload: JSON.stringify(eventArgs),
-            InvocationType: "RequestResponse",
-        };
+            const testResult = await lambda.invoke(params).promise();
+            let testReport = JSON.parse(testResult.Payload).testResult;
 
-        const testResult = await lambda.invoke(params).promise();
-        let testReport = JSON.parse(testResult.Payload).testResult;
+            testReport = JSON.parse(testReport);
+            testReport.classroomName = studentAccount.Item.classroomName;
+            testReport.email = studentAccount.Item.email;
+            testReport.gradeFunction = functionName;
+            testReport.awsAccount = studentAccount.Item.awsAccountId;
 
-        testReport = JSON.parse(testReport);
-        testReport.classroomName = studentAccount.Item.classroomName;
-        testReport.email = studentAccount.Item.email;
-        testReport.gradeFunction = functionName;
+            await common.putJsonToS3(classroomGradeBucket, classroomName + "/" + functionName + "/" + email + "/" + time + ".json", testReport);
 
-        await common.putJsonToS3(classroomGradeBucket, classroomName + "/" + functionName + "/" + email + "/" + time + ".json", testReport);
+            delete testReport.pending;
+            delete testReport.failures;
+            delete testReport.passes;
+            params = {
+                Message: JSON.stringify(testReport),
+                TopicArn: studentAccount.Item.notifyStudentTopic
+            };
+            const sns = new AWS.SNS({
+                accessKeyId: token.Credentials.AccessKeyId,
+                secretAccessKey: token.Credentials.SecretAccessKey,
+                sessionToken: token.Credentials.SessionToken,
+                region: "us-east-1"
+            });
+            const snsResult = await sns.publish(params).promise();
+            console.log(snsResult);
 
-        delete testReport.pending;
-        delete testReport.failures;
-        delete testReport.passes;
-        params = {
-            Message: JSON.stringify(testReport),
-            TopicArn: studentAccount.Item.notifyStudentTopic
-        };
-        const sns = new AWS.SNS({
-            accessKeyId: token.Credentials.AccessKeyId,
-            secretAccessKey: token.Credentials.SecretAccessKey,
-            sessionToken: token.Credentials.SessionToken,
-            region: "us-east-1"
-        });
-        const snsResult = await sns.publish(params).promise();
-        console.log(snsResult);
-
-        return testReport;
+            return testReport;
+        }
+        catch (ex) {
+            console.log(ex);
+            return undefined;
+        }
     };
 
     console.log("Mark All Student Accounts.");
@@ -98,12 +104,11 @@ exports.lambdaHandler = async(event, context) => {
     let rawResults = await Promise.all(students.Items.map(s => gradeClassroom(s.email, time)));
     const isEmpty = obj => Object.keys(obj).length === 0;
 
-    const marks = rawResults
+    const marks = rawResults.filter(c => c !== undefined)
         .map(c => ({
             email: c.email,
             tests: c.tests.map(a => ({ test: a.fullTitle.trim(), pass: isEmpty(a.err) }))
         }));
-
 
     const results = {
         classroomName,
