@@ -698,7 +698,7 @@ Outputs:
   GetCrossAccountAssumeRoleUrl:
     Description: URL for teacher to get the assume role URL for your student account.
     Value: !Sub 'https://${HttpApi}.execute-api.${AWS::Region}.${AWS::URLSuffix}/getCrossAccount.html?classroomName=ChangeToYourClassName'
-  ClassroomGradeBucketBucketSecureURL:
+  ClassroomGradeBucketSecureURL:
     Value: !Join 
       - ''
       - - 'https://'
