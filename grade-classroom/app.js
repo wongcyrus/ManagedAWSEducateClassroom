@@ -3,9 +3,9 @@ const dynamo = new AWS.DynamoDB.DocumentClient();
 const lambda = new AWS.Lambda();
 const common = require('/opt/nodejs/common');
 
+const graderParameterTable = process.env.GraderParameterTable;
 const studentAccountTable = process.env.StudentAccountTable;
 const classroomGradeBucket = process.env.ClassroomGradeBucket;
-
 
 exports.lambdaHandler = async(event, context) => {
     console.log(event);
@@ -32,8 +32,6 @@ exports.lambdaHandler = async(event, context) => {
     };
 
     let students = await dynamo.query(params).promise();
-    //console.log(students);
-    // console.log(classroomName);
     const awsAccountId = context.invokedFunctionArn.split(":")[4];
     const gradeClassroom = async(email, time) => {
 
@@ -45,6 +43,14 @@ exports.lambdaHandler = async(event, context) => {
             }
         }).promise();
         console.log(studentAccount);
+        
+        let graderParameter = await dynamo.get({
+            TableName: graderParameterTable,
+            Key: {
+                'id': classroomName + "#" + functionName + "#" + email,
+            }
+        }).promise();
+        console.log(graderParameter);
         try {
             const sts = new AWS.STS();
             const token = await sts.assumeRole({
@@ -57,12 +63,17 @@ exports.lambdaHandler = async(event, context) => {
                 aws_secret_access_key: token.Credentials.SecretAccessKey,
                 aws_session_token: token.Credentials.SessionToken,
             };
+            
+            if(graderParameter.Item){
+                eventArgs["graderParameter"] = graderParameter.Item.parameters;
+            }
 
             params = {
                 FunctionName: functionName,
                 Payload: JSON.stringify(eventArgs),
                 InvocationType: "RequestResponse",
             };
+            console.log(params);
 
             const testResult = await lambda.invoke(params).promise();
             let testReport = JSON.parse(testResult.Payload).testResult;

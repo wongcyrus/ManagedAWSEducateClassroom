@@ -13,8 +13,8 @@ Metadata:
     LicenseUrl: LICENSE.txt
     ReadmeUrl: README.md
     Labels: ['cloudformation','AWS_Educate']
-    HomePageUrl: https://github.com/wongcyrus/managed-aws-educate-classroom
-    SemanticVersion: 0.0.2
+    HomePageUrl: https://www.linkedin.com/pulse/how-use-managed-aws-educate-classroom-calendar-build-wong/
+    SemanticVersion: 0.0.3
     SourceCodeUrl: https://github.com/wongcyrus/managed-aws-educate-classroom
 
 
@@ -103,6 +103,7 @@ Globals:
     Environment:
       Variables:
         StudentAccountTable: !Ref StudentAccountTable
+        GraderParameterTable: !Ref GraderParameterTable
         ClassroomBucket: !Ref ClassroomBucket
 
 Conditions:
@@ -430,8 +431,11 @@ Resources:
   GradeClassroomFunction:
     Type: AWS::Serverless::Function
     Properties:
+      Timeout: 300
       CodeUri: grade-classroom/
       Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref GraderParameterTable      
         - DynamoDBCrudPolicy:
             TableName: !Ref StudentAccountTable
         - !If [UseAwsSesInbox, S3ReadPolicy:{ BucketName: !Ref 'BucketName'}, !Ref "AWS::NoValue"]
@@ -450,6 +454,7 @@ Resources:
               Resource: "*"
       Environment:
         Variables:
+          GraderParameterTable: !Ref GraderParameterTable        
           ClassroomGradeBucket: !Ref ClassroomGradeBucket
       Events:
         SQSEvent:
@@ -488,6 +493,9 @@ Resources:
               KeyType: "RANGE"
           Projection: 
             ProjectionType: "ALL"
+
+  GraderParameterTable:
+    Type: AWS::Serverless::SimpleTable
 
   ClassroomBucket:
     Type: AWS::S3::Bucket
@@ -541,6 +549,27 @@ Resources:
             Method: ANY
             Path: /
 
+  SetupGraderParametersWebUiFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: web-ui/
+      Handler: setupGraderParameters.lambdaHandler
+      Policies:
+        - DynamoDBWritePolicy:
+            TableName: !Ref GraderParameterTable
+      Environment:
+        Variables:
+          GraderParameterTable: !Ref GraderParameterTable
+          RecaptchaSiteKey: !Ref RecaptchaSiteKey
+          RecaptchaSercetKey: !Ref RecaptchaSercetKey
+      Events:
+        ExplicitApi:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref HttpApi
+            Method: ANY
+            Path: /graderparameter
+            
   GetRdpFileFunction:
     Type: AWS::Serverless::Function
     Properties:
@@ -695,6 +724,9 @@ Outputs:
   StudentRegistrationUrl:
     Description: URL of your Student to Signup and studentEmail is optional.
     Value: !Sub 'https://${HttpApi}.execute-api.${AWS::Region}.${AWS::URLSuffix}/?classroomName=ChangeToYourClassName&studentEmail=YourStudentEmailAddress'
+  SetupGraderParametersUrl:
+    Description: URL of your Student to setup grader parameters and studentEmail is optional.
+    Value: !Sub 'https://${HttpApi}.execute-api.${AWS::Region}.${AWS::URLSuffix}/graderparameter?classroomName=ChangeToYourClassName&gradeFunction=ChangeToYourGraderLambdaFunctionName&studentEmail=YourStudentEmailAddress'
   GetCrossAccountAssumeRoleUrl:
     Description: URL for teacher to get the assume role URL for your student account.
     Value: !Sub 'https://${HttpApi}.execute-api.${AWS::Region}.${AWS::URLSuffix}/getCrossAccount.html?classroomName=ChangeToYourClassName'
