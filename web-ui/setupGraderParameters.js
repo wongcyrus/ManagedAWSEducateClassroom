@@ -123,10 +123,6 @@ exports.lambdaHandler = async(event, context) => {
             }
         }
 
-        console.log(parameters.gradeFunctionParameters);
-        parameters.gradeFunctionParameters = parameters.gradeFunctionParameters;
-        console.log(parameters);
-
         const IsJsonString = (str) => {
             try {
                 JSON.parse(str);
