@@ -14,7 +14,7 @@ Metadata:
     ReadmeUrl: README.md
     Labels: ['cloudformation','AWS_Educate']
     HomePageUrl: https://www.linkedin.com/pulse/how-use-managed-aws-educate-classroom-calendar-build-wong/
-    SemanticVersion: 0.0.3
+    SemanticVersion: 0.0.1
     SourceCodeUrl: https://github.com/wongcyrus/managed-aws-educate-classroom
 
 
@@ -118,6 +118,7 @@ Resources:
       LayerName: managed-aws-educate-classroom-common-layer
       Description: Common code.
       ContentUri: layer/.
+      RetentionPolicy: Delete
       CompatibleRuntimes:
         - nodejs12.x
 
@@ -388,7 +389,7 @@ Resources:
   GradeClassroomQueue:
     Type: AWS::SQS::Queue
     Properties:
-      VisibilityTimeout: 180
+      VisibilityTimeout: 300
       RedrivePolicy: 
         deadLetterTargetArn: !GetAtt GradeClassroomDeadLetterQueue.Arn
         maxReceiveCount: 3    

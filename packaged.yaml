@@ -17,7 +17,7 @@ Metadata:
     - cloudformation
     - AWS_Educate
     HomePageUrl: https://www.linkedin.com/pulse/how-use-managed-aws-educate-classroom-calendar-build-wong/
-    SemanticVersion: 0.0.3
+    SemanticVersion: 0.0.1
     SourceCodeUrl: https://github.com/wongcyrus/managed-aws-educate-classroom
   AWS::CloudFormation::Interface:
     ParameterGroups:
@@ -101,6 +101,8 @@ Globals:
       Variables:
         StudentAccountTable:
           Ref: StudentAccountTable
+        GraderParameterTable:
+          Ref: GraderParameterTable
         ClassroomBucket:
           Ref: ClassroomBucket
 Conditions:
@@ -120,7 +122,7 @@ Resources:
     Properties:
       LayerName: managed-aws-educate-classroom-common-layer
       Description: Common code.
-      ContentUri: s3://cyruswong-sam-repo/ef41c1e69f9f088defb801f63e33bb49
+      ContentUri: s3://cyruswong-sam-repo/17ea7c5e5b777bc194f225773ea75a60
       CompatibleRuntimes:
       - nodejs12.x
   SetupStudentAccountQueue:
@@ -228,7 +230,7 @@ Resources:
   CreateStudentStackFunction:
     Type: AWS::Serverless::Function
     Properties:
-      CodeUri: s3://cyruswong-sam-repo/0254e9b77d3dee2428705ce1149ba6eb
+      CodeUri: s3://cyruswong-sam-repo/a05ffc31b762f5bb0e5f10286b311806
       Policies:
       - DynamoDBCrudPolicy:
           TableName:
@@ -540,8 +542,12 @@ Resources:
   GradeClassroomFunction:
     Type: AWS::Serverless::Function
     Properties:
-      CodeUri: s3://cyruswong-sam-repo/66cccde2fe3faeaee43dffaae62cc818
+      Timeout: 300
+      CodeUri: s3://cyruswong-sam-repo/f1fba1e5e70e300f232e120873d3bf60
       Policies:
+      - DynamoDBCrudPolicy:
+          TableName:
+            Ref: GraderParameterTable
       - DynamoDBCrudPolicy:
           TableName:
             Ref: StudentAccountTable
@@ -569,6 +575,8 @@ Resources:
           Resource: '*'
       Environment:
         Variables:
+          GraderParameterTable:
+            Ref: GraderParameterTable
           ClassroomGradeBucket:
             Ref: ClassroomGradeBucket
       Events:
@@ -603,6 +611,8 @@ Resources:
           KeyType: RANGE
         Projection:
           ProjectionType: ALL
+  GraderParameterTable:
+    Type: AWS::Serverless::SimpleTable
   ClassroomBucket:
     Type: AWS::S3::Bucket
   ClassroomGradeBucket:
@@ -636,7 +646,7 @@ Resources:
   SetupStudentAccountWebUiFunction:
     Type: AWS::Serverless::Function
     Properties:
-      CodeUri: s3://cyruswong-sam-repo/4300342820f703326754fb731fb84b15
+      CodeUri: s3://cyruswong-sam-repo/8d3104692c66ec4c1a337fa65face3cd
       Handler: setupStudentAccount.lambdaHandler
       Policies:
       - LambdaInvokePolicy:
@@ -660,10 +670,35 @@ Resources:
               Ref: HttpApi
             Method: ANY
             Path: /
+  SetupGraderParametersWebUiFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: s3://cyruswong-sam-repo/8d3104692c66ec4c1a337fa65face3cd
+      Handler: setupGraderParameters.lambdaHandler
+      Policies:
+      - DynamoDBWritePolicy:
+          TableName:
+            Ref: GraderParameterTable
+      Environment:
+        Variables:
+          GraderParameterTable:
+            Ref: GraderParameterTable
+          RecaptchaSiteKey:
+            Ref: RecaptchaSiteKey
+          RecaptchaSercetKey:
+            Ref: RecaptchaSercetKey
+      Events:
+        ExplicitApi:
+          Type: HttpApi
+          Properties:
+            ApiId:
+              Ref: HttpApi
+            Method: ANY
+            Path: /graderparameter
   GetRdpFileFunction:
     Type: AWS::Serverless::Function
     Properties:
-      CodeUri: s3://cyruswong-sam-repo/4300342820f703326754fb731fb84b15
+      CodeUri: s3://cyruswong-sam-repo/8d3104692c66ec4c1a337fa65face3cd
       Handler: getRdp.lambdaHandler
       Events:
         ExplicitApi:
@@ -676,7 +711,7 @@ Resources:
   GetPemKeyFileFunction:
     Type: AWS::Serverless::Function
     Properties:
-      CodeUri: s3://cyruswong-sam-repo/4300342820f703326754fb731fb84b15
+      CodeUri: s3://cyruswong-sam-repo/8d3104692c66ec4c1a337fa65face3cd
       Handler: getPemKey.lambdaHandler
       Events:
         ExplicitApi:
@@ -689,7 +724,7 @@ Resources:
   GetCrossAccountRoleWebUiFunction:
     Type: AWS::Serverless::Function
     Properties:
-      CodeUri: s3://cyruswong-sam-repo/4300342820f703326754fb731fb84b15
+      CodeUri: s3://cyruswong-sam-repo/8d3104692c66ec4c1a337fa65face3cd
       Handler: getCrossAccount.lambdaHandler
       Policies:
       - DynamoDBReadPolicy:
@@ -842,6 +877,11 @@ Outputs:
     Description: URL of your Student to Signup and studentEmail is optional.
     Value:
       Fn::Sub: https://${HttpApi}.execute-api.${AWS::Region}.${AWS::URLSuffix}/?classroomName=ChangeToYourClassName&studentEmail=YourStudentEmailAddress
+  SetupGraderParametersUrl:
+    Description: URL of your Student to setup grader parameters and studentEmail is
+      optional.
+    Value:
+      Fn::Sub: https://${HttpApi}.execute-api.${AWS::Region}.${AWS::URLSuffix}/graderparameter?classroomName=ChangeToYourClassName&gradeFunction=ChangeToYourGraderLambdaFunctionName&studentEmail=YourStudentEmailAddress
   GetCrossAccountAssumeRoleUrl:
     Description: URL for teacher to get the assume role URL for your student account.
     Value:
