@@ -22,6 +22,11 @@ exports.lambdaHandler = async(event, context) => {
             functionName = emailBody.split('\n')[0].trim();
         }
     }
+    
+    if(!functionName){
+        console.log("Not Grader Event!");
+        return "Not Grader Event!";
+    }
 
     let params = {
         TableName: studentAccountTable,

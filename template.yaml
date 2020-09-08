@@ -263,7 +263,9 @@ Resources:
           Resource: !GetAtt CreateClassroomQueue.Arn
           Condition:
             ArnEquals:
-              aws:SourceArn: !Ref 'SesInboxTopic'              
+              aws:SourceArn: !Ref 'SesInboxTopic'   
+
+              
   CreateClassroomFunction:
     Type: AWS::Serverless::Function
     Properties:
@@ -689,7 +691,7 @@ Resources:
       Endpoint: !GetAtt [GradeClassroomQueue, Arn]
       Protocol: sqs
       
-  CreateClassroomCalendarEventsQueuePolicy:
+  GradeClassroomCalendarEventsQueuePolicy:
     Type: AWS::SQS::QueuePolicy
     Condition: UseCalendarTrigger
     Properties:
