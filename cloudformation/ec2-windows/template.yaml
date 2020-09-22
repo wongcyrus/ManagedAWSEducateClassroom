@@ -22,9 +22,9 @@ Resources:
   EC2Instance:
     Type: AWS::EC2::Instance
     Metadata:
-      AWS::Cloudformation::Init:
+      AWS::CloudFormation::Init:
         configSets:
-          config:
+          default:
             - setup
             - finalize
         setup:
@@ -38,7 +38,7 @@ Resources:
               content: !Sub |
                 [cfn-auto-reloader-hook]
                 triggers=post.update
-                path=Resources.BastionServer.Metadata.AWS::CloudFormation::Init
+                path=Resources.EC2Instance.Metadata.AWS::CloudFormation::Init
                 action=cfn-init.exe -v -s ${AWS::StackId} -r EC2Instance --region ${AWS::Region}
           services:
             windows:
@@ -62,12 +62,12 @@ Resources:
         Fn::Base64:
           !Sub
             - |
-              <script>
-                net.exe user Administrator ${Password}
+              <script>                     
                 ${UserData}
                 cfn-init.exe -v -s ${StackName} -r EC2Instance --region ${Region}
                 cfn-signal.exe -e %ERRORLEVEL% ${WaitHandleHash} 
-              </script>
+                net.exe user Administrator ${Password}
+              </script>              
             -   
               WaitHandleHash:
                   Fn::Base64: !Ref WaitHandle
@@ -106,7 +106,7 @@ Resources:
     Properties: 
       Handle: 
         Ref: "WaitHandle"
-      Timeout: "300"
+      Timeout: "900"
       Count: 1
 
         
