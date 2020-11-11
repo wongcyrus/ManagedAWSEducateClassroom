@@ -22,8 +22,8 @@ exports.lambdaHandler = async(event, context) => {
             functionName = emailBody.split('\n')[0].trim();
         }
     }
-    
-    if(!functionName){
+
+    if (!functionName) {
         console.log("Not Grader Event!");
         return "Not Grader Event!";
     }
@@ -48,7 +48,7 @@ exports.lambdaHandler = async(event, context) => {
             }
         }).promise();
         console.log(studentAccount);
-        
+
         let graderParameter = await dynamo.get({
             TableName: graderParameterTable,
             Key: {
@@ -68,8 +68,8 @@ exports.lambdaHandler = async(event, context) => {
                 aws_secret_access_key: token.Credentials.SecretAccessKey,
                 aws_session_token: token.Credentials.SessionToken,
             };
-            
-            if(graderParameter.Item){
+
+            if (graderParameter.Item) {
                 eventArgs["graderParameter"] = graderParameter.Item.parameters;
             }
 
@@ -146,8 +146,8 @@ const generateMarksheet = async(classroomName, functionName) => {
     const lsResult = await common.lsS3Objects(classroomGradeBucket, "/" + classroomName + "/" + functionName + "/");
     const markReports = lsResult.files.filter(c => c.includes("classReport"));
 
-    const dailyMarks = await Promise.all(markReports.map(async k => JSON.parse(await common.getS3File(classroomGradeBucket, k))));
-    const allTests = dailyMarks.map(c => c.marks).map(c => c.map(a => ({ email: a.email, passedTests: a.tests.filter(a => a.pass).map(a => a.test) })));
+    const previousMarkReports = await Promise.all(markReports.map(async k => JSON.parse(await common.getS3File(classroomGradeBucket, k))));
+    const allTests = previousMarkReports.map(c => c.marks).map(c => c.map(a => ({ email: a.email, passedTests: a.tests.filter(a => a.pass).map(a => a.test) })));
 
     const emailAndpassedTest = allTests.flatMap(testReport => testReport.flatMap(student => student.passedTests.map(c => ({ email: student.email, passedTest: c }))));
 
@@ -210,5 +210,6 @@ const getFormattedTime = () => {
     const m = today.getMonth() + 1;
     const d = today.getDate();
     const h = today.getHours();
-    return y + "-" + m + "-" + d + "-" + h;
+    const min = today.getMinutes();
+    return y + "-" + m + "-" + d + "-" + h + "-" + min;
 };
