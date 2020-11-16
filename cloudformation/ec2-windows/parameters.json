@@ -1,14 +1,14 @@
 [{
   "ParameterKey": "AmiId",
-  "ParameterValue": "ami-032c2c4b952586f02"
+  "ParameterValue": "ami-0fac8943d8b56dcb1"
  },
  {
   "ParameterKey": "InstanceType",
-  "ParameterValue": "t2.micro"
+  "ParameterValue": "t2.xlarge"
  },
  {
   "ParameterKey": "Password",
-  "ParameterValue": "P@ssw0rd12345678"
+  "ParameterValue": "Dw?X%?myCVax(5nG36cCYgdf(fFZC7LR"
  },
  {
   "ParameterKey": "KeyPairName",

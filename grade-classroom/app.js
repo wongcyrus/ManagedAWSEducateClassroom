@@ -172,6 +172,7 @@ const generateMarksheet = async(classroomName, functionName) => {
         marksheets.push(row);
     }
     await common.putJsonToS3(classroomGradeBucket, classroomName + "/" + functionName + "/" + "marksheet.json", { marksheets });
+    await common.putCsvToS3(classroomGradeBucket, classroomName + "/" + functionName + "/" + "marksheet.csv", marksheets.map(c => c[0] + "," + c[1]).reduce((c, v) => c + "\n" + v));
 
     let htmlData = [];
     for (const email of emails) {
@@ -184,20 +185,23 @@ const generateMarksheet = async(classroomName, functionName) => {
 <!DOCTYPE html>
 <html>
 <head>
-<title>${classroomName} - ${functionName} Cumulative Marksheet</title>
-<link href="https://unpkg.com/tabulator-tables@4.7.0/dist/css/tabulator.min.css" rel="stylesheet">
-<script type="text/javascript" src="https://unpkg.com/tabulator-tables@4.7.0/dist/js/tabulator.min.js"></script>
+    <title>${classroomName} - ${functionName} Cumulative Marksheet</title>
+    <link href="https://unpkg.com/tabulator-tables@4.7.0/dist/css/tabulator.min.css" rel="stylesheet">
+    <script type="text/javascript" src="https://unpkg.com/tabulator-tables@4.7.0/dist/js/tabulator.min.js"></script>
 </head>
 <body>
-<h1>${classroomName} - ${functionName} Cumulative Marksheet</h1>
-<div id="table"></div>
-<script>
-let tabledata = ${JSON.stringify(htmlData)};
-let table = new Tabulator("#table", {
-    data:tabledata,
-    autoColumns:true,
-});
-</script>
+    <h1>${classroomName} - ${functionName} Cumulative Marksheet</h1>
+    <div id="table"></div>
+    <script>
+        let tabledata = ${JSON.stringify(htmlData)};
+        let table = new Tabulator("#table", {
+            data:tabledata,
+            autoColumns:true,
+        });
+    </script>
+    <div>
+        <a href="marksheet.csv" target="_blank">Download CSV marksheet</a>
+    </div>
 </body>
 </html>
 `;

@@ -122,7 +122,8 @@ Resources:
     Properties:
       LayerName: managed-aws-educate-classroom-common-layer
       Description: Common code.
-      ContentUri: s3://cyruswong-sam-repo/17ea7c5e5b777bc194f225773ea75a60
+      ContentUri: s3://cyruswong-sam-repo/80823813b96308b57c1692325761150a
+      RetentionPolicy: Delete
       CompatibleRuntimes:
       - nodejs12.x
   SetupStudentAccountQueue:
@@ -184,7 +185,7 @@ Resources:
   SetupStudentAccountFunction:
     Type: AWS::Serverless::Function
     Properties:
-      CodeUri: s3://cyruswong-sam-repo/5a6b3d135af6d414be974f1d04cfbc1b
+      CodeUri: s3://cyruswong-sam-repo/df6de4afd32db91ca51742badd8b19ab
       Policies:
       - DynamoDBCrudPolicy:
           TableName:
@@ -216,7 +217,7 @@ Resources:
   StartInstanceFunction:
     Type: AWS::Serverless::Function
     Properties:
-      CodeUri: s3://cyruswong-sam-repo/d885f3eb6626ad1d1107ccec18c2901e
+      CodeUri: s3://cyruswong-sam-repo/76d09c3c1b24690d8d8676765e0ea02e
       Policies:
       - DynamoDBCrudPolicy:
           TableName:
@@ -230,7 +231,7 @@ Resources:
   CreateStudentStackFunction:
     Type: AWS::Serverless::Function
     Properties:
-      CodeUri: s3://cyruswong-sam-repo/a05ffc31b762f5bb0e5f10286b311806
+      CodeUri: s3://cyruswong-sam-repo/d17d6016984c0090df0760cef4e206a9
       Policies:
       - DynamoDBCrudPolicy:
           TableName:
@@ -315,7 +316,7 @@ Resources:
   CreateClassroomFunction:
     Type: AWS::Serverless::Function
     Properties:
-      CodeUri: s3://cyruswong-sam-repo/b67f6826d5b7aa12530a81921f8753af
+      CodeUri: s3://cyruswong-sam-repo/26b3c6f84a542950dd804e9039b65a3d
       Policies:
       - DynamoDBCrudPolicy:
           TableName:
@@ -357,7 +358,7 @@ Resources:
   StopInstanceFunction:
     Type: AWS::Serverless::Function
     Properties:
-      CodeUri: s3://cyruswong-sam-repo/db259feef615b18cf90ec32f81807932
+      CodeUri: s3://cyruswong-sam-repo/1a25b9f9a963b403543e50878efd5c1f
       Policies:
       - DynamoDBCrudPolicy:
           TableName:
@@ -371,7 +372,7 @@ Resources:
   DeleteStudentStackFunction:
     Type: AWS::Serverless::Function
     Properties:
-      CodeUri: s3://cyruswong-sam-repo/f9c5eb634f15e335da22add90b90b9a7
+      CodeUri: s3://cyruswong-sam-repo/b9a05b504f91c63d2e6d79298837f018
       Policies:
       - DynamoDBCrudPolicy:
           TableName:
@@ -444,7 +445,7 @@ Resources:
   DeleteClassroomFunction:
     Type: AWS::Serverless::Function
     Properties:
-      CodeUri: s3://cyruswong-sam-repo/6fb1265a0666cb8aa8c8bc29c407d825
+      CodeUri: s3://cyruswong-sam-repo/05a9e118783bd8e7ae526ae5759ae6a7
       Policies:
       - DynamoDBCrudPolicy:
           TableName:
@@ -486,7 +487,7 @@ Resources:
   GradeClassroomQueue:
     Type: AWS::SQS::Queue
     Properties:
-      VisibilityTimeout: 180
+      VisibilityTimeout: 300
       RedrivePolicy:
         deadLetterTargetArn:
           Fn::GetAtt:
@@ -543,7 +544,7 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       Timeout: 300
-      CodeUri: s3://cyruswong-sam-repo/f1fba1e5e70e300f232e120873d3bf60
+      CodeUri: s3://cyruswong-sam-repo/4d62e21c1bc12502b35547885373be28
       Policies:
       - DynamoDBCrudPolicy:
           TableName:
@@ -811,6 +812,45 @@ Resources:
     Condition: UseCalendarTrigger
     Properties:
       Queues:
+      - Ref: CreateClassroomQueue
+      PolicyDocument:
+        Version: '2008-10-17'
+        Id: PublicationPolicy
+        Statement:
+        - Sid: Allow-SNS-SendMessage
+          Effect: Allow
+          Principal:
+            AWS: '*'
+          Action:
+          - sqs:SendMessage
+          Resource:
+            Fn::GetAtt:
+            - CreateClassroomQueue
+            - Arn
+          Condition:
+            ArnEquals:
+              aws:SourceArn:
+                Fn::GetAtt:
+                - CalendarEventsApplication
+                - Outputs.CanlenderEventStartTopic
+  GradeClassroomCalendarEventsSubscription:
+    Type: AWS::SNS::Subscription
+    Condition: UseCalendarTrigger
+    Properties:
+      TopicArn:
+        Fn::GetAtt:
+        - CalendarEventsApplication
+        - Outputs.CanlenderEventStartTopic
+      Endpoint:
+        Fn::GetAtt:
+        - GradeClassroomQueue
+        - Arn
+      Protocol: sqs
+  GradeClassroomCalendarEventsQueuePolicy:
+    Type: AWS::SQS::QueuePolicy
+    Condition: UseCalendarTrigger
+    Properties:
+      Queues:
       - Ref: GradeClassroomQueue
       PolicyDocument:
         Version: '2008-10-17'
@@ -832,19 +872,6 @@ Resources:
                 Fn::GetAtt:
                 - CalendarEventsApplication
                 - Outputs.CanlenderEventStartTopic
-  GradeClassroomCalendarEventsSubscription:
-    Type: AWS::SNS::Subscription
-    Condition: UseCalendarTrigger
-    Properties:
-      TopicArn:
-        Fn::GetAtt:
-        - CalendarEventsApplication
-        - Outputs.CanlenderEventStartTopic
-      Endpoint:
-        Fn::GetAtt:
-        - GradeClassroomQueue
-        - Arn
-      Protocol: sqs
 Outputs:
   SetupStudentAccountFunction:
     Description: SetupStudentAccountFunction

@@ -21,6 +21,16 @@ module.exports.putJsonToS3 = async(bucket, key, json) => {
     return response;
 };
 
+module.exports.putCsvToS3 = async(bucket, key, csvText) => {
+    const response = s3.putObject({
+        Bucket: bucket,
+        Key: key,
+        Body: csvText,
+        ContentType: "text/csv"
+    }).promise();
+    return response;
+};
+
 module.exports.putHtmlToS3 = async(bucket, key, html) => {
     const response = s3.putObject({
         Bucket: bucket,
