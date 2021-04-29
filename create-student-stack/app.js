@@ -8,19 +8,28 @@ const pemKeyFileUrl = process.env.PemKeyFileUrl;
 
 
 const createStudentLabStack = async(param) => {
-    const { roleArn, templateBody, parameters, stackName, labStackCreationCompleteTopic } = param;
-    const sts = new AWS.STS();
-    const token = await sts.assumeRole({
-        RoleArn: roleArn,
-        RoleSessionName: 'studentAccount'
-    }).promise();
+    const { roleArn, templateBody, parameters, stackName, labStackCreationCompleteTopic, accessKeyId, secretAccessKey } = param;
 
-    const cloudformation = new AWS.CloudFormation({
-        accessKeyId: token.Credentials.AccessKeyId,
-        secretAccessKey: token.Credentials.SecretAccessKey,
-        sessionToken: token.Credentials.SessionToken,
+    let credentials = {
+        accessKeyId,
+        secretAccessKey,
         region: "us-east-1"
-    });
+    };
+    if (!accessKeyId) {
+        const sts = new AWS.STS();
+        const token = await sts.assumeRole({
+            RoleArn: roleArn,
+            RoleSessionName: 'studentAccount'
+        }).promise();
+        credentials = {
+            accessKeyId: token.Credentials.AccessKeyId,
+            secretAccessKey: token.Credentials.SecretAccessKey,
+            sessionToken: token.Credentials.SessionToken,
+            region: "us-east-1"
+        };
+    }
+
+    const cloudformation = new AWS.CloudFormation(credentials);
     const params = {
         StackName: stackName,
         NotificationARNs: [labStackCreationCompleteTopic],
@@ -66,7 +75,7 @@ exports.lambdaHandler = async(event, context) => {
     replaceValue("###UriEncodedKeyMaterial###", encodeURIComponent(keyPair.KeyMaterial));
     replaceValue("###RdpFileUrl###", rdpFileUrl);
     replaceValue("###PemKeyFileUrl###", pemKeyFileUrl);
-    
+
     console.log(parameters);
 
     const awsAccountId = context.invokedFunctionArn.split(":")[4];
@@ -75,7 +84,9 @@ exports.lambdaHandler = async(event, context) => {
         labStackCreationCompleteTopic: studentAccount.Item.labStackCreationCompleteTopic,
         roleArn: `arn:aws:iam::${studentAccount.Item.awsAccountId}:role/crossaccountteacher${awsAccountId}`,
         templateBody: await common.getS3File(bucket, templateKey),
-        parameters: parameters
+        parameters: parameters,
+        accessKeyId: studentAccount.Item.accessKeyId,
+        secretAccessKey: studentAccount.Item.secretAccessKey,
     };
     await createStudentLabStack(param);
     return "OK";

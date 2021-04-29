@@ -64,7 +64,7 @@ exports.lambdaHandler = async(event, context) => {
         data-action='submit'>Submit</button>
 `;
             }
-            
+
             return {
                 "headers": {
                     "Content-Type": " text/html"
@@ -86,8 +86,14 @@ exports.lambdaHandler = async(event, context) => {
             <input type="hidden" id="classroomName" name="classroomName" value="${classroomName}">
             <label for="Email">Email:</label><br>
             <input type="email" id="email" name="email" size="50" value="${studentEmail}" required><br>
+            For AWS Educate Classroom, you need to provide the Credentials.<br>
             <label for="credentials">Credentials:</label><br>
-            <textarea id="rawKey" name="rawKey" rows="10" cols="100" required></textarea><br>
+            <textarea id="rawKey" name="rawKey" rows="10" cols="100"></textarea><br>
+            For AWS Academy Learner Lab Associate, you need to provide access key pair.<br>
+            <label for="AccessKey">Access Key:</label><br>
+            <input type="text" id="accessKey" name="accessKey" size="50"><br>            
+            <label for="SecretKey">Secret Key:</label><br>
+            <input type="text" id="secretKey" name="secretKey" size="50"><br>            
             ${recaptcha}
         </form> 
         <footer>
@@ -105,7 +111,7 @@ exports.lambdaHandler = async(event, context) => {
         const parameters = querystring.parse(body);
         console.log(parameters);
         if (recaptchaSercetKey !== "") {
-            const token =  parameters["g-recaptcha-response"][0];
+            const token = parameters["g-recaptcha-response"][0];
             let verifyResult = await axios.post(`https://www.google.com/recaptcha/api/siteverify?secret=${recaptchaSercetKey}&response=${token}`);
 
             console.log(verifyResult);
@@ -119,9 +125,27 @@ exports.lambdaHandler = async(event, context) => {
                 };
             }
         }
-        console.log(typeof parameters.rawKey);
-        console.log(parameters.rawKey.replace(/(\r\n|\n|\r)/gm, ""));
-        parameters.rawKey = parameters.rawKey.replace(/(\r\n|\n|\r)/gm, "");
+
+        const isNullOrEmpty = value => (!value || value == undefined || value == "" || value.length == 0);
+
+        if (!isNullOrEmpty(parameters.rawKey)) {
+            console.log(typeof parameters.rawKey);
+            console.log(parameters.rawKey.replace(/(\r\n|\n|\r)/gm, ""));
+            parameters.rawKey = parameters.rawKey.replace(/(\r\n|\n|\r)/gm, "");
+        }
+        else if (!isNullOrEmpty(parameters.accessKey) && !isNullOrEmpty(parameters.secretKey)) {
+            console.log("AWS Academy Learner Lab");
+        }
+        else {
+            return {
+                "headers": {
+                    "Content-Type": "text/html"
+                },
+                "statusCode": 200,
+                "body": "You need to provide AWS Educate Classroom Raw Key or AWS Academy Learner Lab Key Pair!",
+            };
+        }
+
         console.log(parameters);
 
         let params = {

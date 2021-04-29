@@ -20,20 +20,34 @@ const extractKeys = rawKey => {
     return { accessKeyId, secretAccessKey, sessionToken };
 };
 
-const initStudentAccount = async(classroomName, email, rawKey) => {
+const initStudentAccount = async(classroomName, email, rawKey, accessKey, secretKey) => {
     let sts = new AWS.STS();
     const account = (await sts.getCallerIdentity().promise()).Account;
-    const { accessKeyId, secretAccessKey, sessionToken } = extractKeys(rawKey);
-
-    sts = new AWS.STS({ accessKeyId, secretAccessKey, sessionToken });
+    let accessKeyId, secretAccessKey, sessionToken;
+    let credentials = {};
+    if (rawKey) {
+        ({ accessKeyId, secretAccessKey, sessionToken } = { ...extractKeys(rawKey) });
+        sts = new AWS.STS({ accessKeyId, secretAccessKey, sessionToken });
+        credentials = {
+            accessKeyId,
+            secretAccessKey,
+            sessionToken,
+            region: "us-east-1"
+        };
+    }
+    else {
+        accessKeyId = accessKey;
+        secretAccessKey = secretKey;
+        sts = new AWS.STS({ accessKey, secretKey });
+        credentials = {
+            accessKeyId,
+            secretAccessKey,
+            region: "us-east-1"
+        };
+    }
     const studentAcocuntIdentity = await sts.getCallerIdentity().promise();
     const template = fs.readFileSync("InitStudentAccount.yaml", "utf8");
-    const cloudformation = new AWS.CloudFormation({
-        accessKeyId,
-        secretAccessKey,
-        sessionToken,
-        region: "us-east-1"
-    });
+    const cloudformation = new AWS.CloudFormation(credentials);
     let params = {
         StackName: 'ManagedAWSEduateClassroom-' + account,
         Capabilities: [
@@ -63,12 +77,7 @@ const initStudentAccount = async(classroomName, email, rawKey) => {
     console.log(classroomName, email, rawKey);
 
 
-    const ec2 = new AWS.EC2({
-        accessKeyId,
-        secretAccessKey,
-        sessionToken,
-        region: "us-east-1"
-    });
+    const ec2 = new AWS.EC2(credentials);
 
     try {
         await ec2.deleteKeyPair({
@@ -82,10 +91,8 @@ const initStudentAccount = async(classroomName, email, rawKey) => {
     }).promise();
 
     let keyPair = JSON.stringify(keyResponse);
-
-    let result = await dynamo.put({
-        "TableName": studentAccountTable,
-        "Item": {
+    
+    let item = {
             "classroomName": classroomName,
             "email": email,
             "studentAccountArn": studentAcocuntIdentity.Arn,
@@ -93,14 +100,22 @@ const initStudentAccount = async(classroomName, email, rawKey) => {
             "labStackCreationCompleteTopic": labStackCreationCompleteTopic,
             "notifyStudentTopic": notifyStudentTopic,
             "keyPair": keyPair
-        }
+        };
+    if (!rawKey) {
+        item.accessKeyId = accessKeyId;
+        item.secretAccessKey = secretAccessKey;
+    }
+
+    let result = await dynamo.put({
+        "TableName": studentAccountTable,
+        "Item": item
     }).promise();
     return result;
 };
 
 
 exports.lambdaHandler = async(event, context) => {
-    let { classroomName, email, rawKey } = event;
+    let { classroomName, email, rawKey, accessKey, secretKey } = event;
     console.log(event);
     if (event.Records) {
         let { message, emailBody } = await common.getSesInboxMessage(event);
@@ -111,5 +126,5 @@ exports.lambdaHandler = async(event, context) => {
         email = message.sender;
         rawKey = emailBody;
     }
-    return initStudentAccount(classroomName, email, rawKey);
+    return initStudentAccount(classroomName, email, rawKey, accessKey, secretKey);
 };

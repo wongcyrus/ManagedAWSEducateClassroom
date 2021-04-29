@@ -8,6 +8,7 @@ s3_prefix = "managed-aws-educate-classroom"
 region = "us-east-1"
 confirm_changeset = false
 capabilities = 'CAPABILITY_AUTO_EXPAND CAPABILITY_NAMED_IAM CAPABILITY_IAM'
-parameter_overrides = "RecaptchaSiteKey=6LchrKUZAAAAAO4XouIktuSbrY2a_yvULmJjiD-S RecaptchaSercetKey=6LchrKUZAAAAAMKWhYfPB0uLXjgggF-CwfUyH2_I CalendarUrl=https://calendar.google.com/calendar/ical/spe8ehlqjkv8hd7mdjs3d2g80c%40group.calendar.google.com/public/basic.ics"
+parameter_overrides = "CalendarUrl=https://calendar.google.com/calendar/ical/spe8ehlqjkv8hd7mdjs3d2g80c%40group.calendar.google.com/public/basic.ics"
+# parameter_overrides = "RecaptchaSiteKey=6LchrKUZAAAAAO4XouIktuSbrY2a_yvULmJjiD-S RecaptchaSercetKey=6LchrKUZAAAAAMKWhYfPB0uLXjgggF-CwfUyH2_I CalendarUrl=https://calendar.google.com/calendar/ical/spe8ehlqjkv8hd7mdjs3d2g80c%40group.calendar.google.com/public/basic.ics"
 # parameter_overrides = 'Password="Password@1234" StudentCommandEmail="student-aws-account@wongcyrus.codes" StudentEmailDomains="vtc.edu.hk,stu.vtc.edu.hk" TeacherCommandEmail="managed-aws-educate@wongcyrus.codes" TeacherEmailDomains="vtc.edu.hk" BucketName="awssesinboxstack-sesinboxinboxbucketec1a30f6-vssumvsmfjis"     SNSTopic="arn:aws:sns:us-east-1:467005446488:AwsSesInboxStack-SesInboxTopic7847F84E-KWDJ8VRUKS0O"'
 

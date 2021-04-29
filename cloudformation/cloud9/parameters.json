@@ -1,9 +1,5 @@
 [{
   "ParameterKey": "InstanceType",
   "ParameterValue": "t2.micro"
- },
- {
-  "ParameterKey": "OwnerArn",
-  "ParameterValue": "###studentAccountArn###"
  }
 ]

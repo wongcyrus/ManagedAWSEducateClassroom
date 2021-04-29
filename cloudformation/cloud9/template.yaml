@@ -1,8 +1,6 @@
 AWSTemplateFormatVersion: '2010-09-09'
 Description: AWS Cloud9 Environment
 Parameters:
-  OwnerArn:
-    Type: String
   InstanceType:
     Description: EC2 instance type on which IDE runs
     Type:        String
@@ -51,7 +49,6 @@ Resources:
   C9IDE:
     Type: 'AWS::Cloud9::EnvironmentEC2'
     Properties:
-      OwnerArn: !Ref OwnerArn
       AutomaticStopTimeMinutes: !Ref 'AutoHibernateTimeout'
       InstanceType: !Ref 'InstanceType'
 
