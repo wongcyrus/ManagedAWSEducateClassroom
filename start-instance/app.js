@@ -4,21 +4,27 @@ const studentAccountTable = process.env.StudentAccountTable;
 
 
 const startStudentInstance = async(param) => {
-    const { roleArn, stackName, notifyStudentTopic } = param;
-    const sts = new AWS.STS();
-    const token = await sts.assumeRole({
-        RoleArn: roleArn,
-        RoleSessionName: 'studentAccount'
-    }).promise();
-
-    const credential = {
-        accessKeyId: token.Credentials.AccessKeyId,
-        secretAccessKey: token.Credentials.SecretAccessKey,
-        sessionToken: token.Credentials.SessionToken,
+    const { roleArn, stackName, notifyStudentTopic, accessKeyId, secretAccessKey } = param;
+    let credentials = {
+        accessKeyId,
+        secretAccessKey,
         region: "us-east-1"
     };
+    if (!accessKeyId) {
+        const sts = new AWS.STS();
+        const token = await sts.assumeRole({
+            RoleArn: roleArn,
+            RoleSessionName: 'studentAccount'
+        }).promise();
+        credentials = {
+            accessKeyId: token.Credentials.AccessKeyId,
+            secretAccessKey: token.Credentials.SecretAccessKey,
+            sessionToken: token.Credentials.SessionToken,
+            region: "us-east-1"
+        };
+    }
 
-    const cloudformation = new AWS.CloudFormation(credential);
+    const cloudformation = new AWS.CloudFormation(credentials);
 
     let response = await cloudformation.describeStackResources({
         StackName: stackName
@@ -28,7 +34,7 @@ const startStudentInstance = async(param) => {
 
     if (instanceIds.length === 0) return;
 
-    const ec2 = new AWS.EC2(credential);
+    const ec2 = new AWS.EC2(credentials);
 
     response = await ec2.startInstances({
         InstanceIds: instanceIds
@@ -52,7 +58,7 @@ const startStudentInstance = async(param) => {
     
     console.log(JSON.stringify(messages));
 
-    const sns = new AWS.SNS(credential);
+    const sns = new AWS.SNS(credentials);
     response = await sns.publish({
         Subject: "Running EC2 Instances for " + stackName,
         Message: JSON.stringify(messages),
@@ -78,7 +84,9 @@ exports.lambdaHandler = async(event, context) => {
     const param = {
         stackName,
         roleArn: `arn:aws:iam::${studentAccount.Item.awsAccountId}:role/crossaccountteacher${awsAccountId}`,
-        notifyStudentTopic: studentAccount.Item.notifyStudentTopic
+        notifyStudentTopic: studentAccount.Item.notifyStudentTopic,
+        accessKeyId: studentAccount.Item.accessKeyId,
+        secretAccessKey: studentAccount.Item.secretAccessKey,
     };
     await startStudentInstance(param);
     return "OK";

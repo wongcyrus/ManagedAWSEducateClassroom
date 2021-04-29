@@ -4,28 +4,35 @@ const studentAccountTable = process.env.StudentAccountTable;
 
 
 const stopStudentInstance = async(param) => {
-    const { roleArn, stackName } = param;
-    const sts = new AWS.STS();
-    const token = await sts.assumeRole({
-        RoleArn: roleArn,
-        RoleSessionName: 'studentAccount'
-    }).promise();
+    const { roleArn, stackName , accessKeyId, secretAccessKey } = param;
 
-    const credential = {
-        accessKeyId: token.Credentials.AccessKeyId,
-        secretAccessKey: token.Credentials.SecretAccessKey,
-        sessionToken: token.Credentials.SessionToken,
+    let credentials = {
+        accessKeyId,
+        secretAccessKey,
         region: "us-east-1"
     };
+    if (!accessKeyId) {
+        const sts = new AWS.STS();
+        const token = await sts.assumeRole({
+            RoleArn: roleArn,
+            RoleSessionName: 'studentAccount'
+        }).promise();
+        credentials = {
+            accessKeyId: token.Credentials.AccessKeyId,
+            secretAccessKey: token.Credentials.SecretAccessKey,
+            sessionToken: token.Credentials.SessionToken,
+            region: "us-east-1"
+        };
+    }
     
-    const cloudformation = new AWS.CloudFormation(credential);
+    const cloudformation = new AWS.CloudFormation(credentials);
     let response = await cloudformation.describeStackResources({
         StackName: stackName
     }).promise();
     const instanceIds = response.StackResources.filter(c => c.ResourceType === "AWS::EC2::Instance").map(c => c.PhysicalResourceId);
     console.log(instanceIds);
 
-    const ec2 = new AWS.EC2(credential);
+    const ec2 = new AWS.EC2(credentials);
 
     response = await ec2.stopInstances({
         InstanceIds: instanceIds
@@ -50,6 +57,8 @@ exports.lambdaHandler = async(event, context) => {
     const param = {
         stackName,
         roleArn: `arn:aws:iam::${studentAccount.Item.awsAccountId}:role/crossaccountteacher${awsAccountId}`,
+        accessKeyId: studentAccount.Item.accessKeyId,
+        secretAccessKey: studentAccount.Item.secretAccessKey,
     };
     await stopStudentInstance(param);
     return "OK";

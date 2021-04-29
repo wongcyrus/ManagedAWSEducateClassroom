@@ -48,6 +48,28 @@ exports.lambdaHandler = async(event, context) => {
             }
         }).promise();
         console.log(studentAccount);
+        const accessKeyId = studentAccount.Item.accessKeyId;
+        const secretAccessKey = studentAccount.Item.secretAccessKey;
+        const roleArn = `arn:aws:iam::${studentAccount.Item.awsAccountId}:role/crossaccountteacher${awsAccountId}`;
+
+        let credentials = {
+            accessKeyId,
+            secretAccessKey,
+            region: "us-east-1"
+        };
+        if (!accessKeyId) {
+            const sts = new AWS.STS();
+            const token = await sts.assumeRole({
+                RoleArn: roleArn,
+                RoleSessionName: 'studentAccount'
+            }).promise();
+            credentials = {
+                accessKeyId: token.Credentials.AccessKeyId,
+                secretAccessKey: token.Credentials.SecretAccessKey,
+                sessionToken: token.Credentials.SessionToken,
+                region: "us-east-1"
+            };
+        }
 
         let graderParameter = await dynamo.get({
             TableName: graderParameterTable,
@@ -57,17 +79,13 @@ exports.lambdaHandler = async(event, context) => {
         }).promise();
         console.log(graderParameter);
         try {
-            const sts = new AWS.STS();
-            const token = await sts.assumeRole({
-                RoleArn: `arn:aws:iam::${studentAccount.Item.awsAccountId}:role/crossaccountteacher${awsAccountId}`,
-                RoleSessionName: 'studentAccount'
-            }).promise();
 
-            const eventArgs = {
-                aws_access_key: token.Credentials.AccessKeyId,
-                aws_secret_access_key: token.Credentials.SecretAccessKey,
-                aws_session_token: token.Credentials.SessionToken,
+            let eventArgs = {
+                aws_access_key: credentials.accessKeyId,
+                aws_secret_access_key: credentials.secretAccessKey,
             };
+            if (credentials.sessionToken)
+                eventArgs.aws_session_token = credentials.sessionToken
 
             if (graderParameter.Item) {
                 eventArgs["graderParameter"] = graderParameter.Item.parameters;
@@ -98,12 +116,7 @@ exports.lambdaHandler = async(event, context) => {
                 Message: JSON.stringify(testReport),
                 TopicArn: studentAccount.Item.notifyStudentTopic
             };
-            const sns = new AWS.SNS({
-                accessKeyId: token.Credentials.AccessKeyId,
-                secretAccessKey: token.Credentials.SecretAccessKey,
-                sessionToken: token.Credentials.SessionToken,
-                region: "us-east-1"
-            });
+            const sns = new AWS.SNS(credentials);
             const snsResult = await sns.publish(params).promise();
             console.log(snsResult);
 
