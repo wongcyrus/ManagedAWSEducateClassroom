@@ -65,6 +65,21 @@ exports.lambdaHandler = async(event, context) => {
 `;
             }
 
+            let inputFields = `
+            For AWS Educate Classroom, you need to provide the Credentials.<br>
+            <label for="credentials">Credentials:</label><br>
+            <textarea id="rawKey" name="rawKey" rows="10" cols="100"></textarea><br>
+`;
+            if (event.queryStringParameters.isAWSAcademy) {
+                inputFields = `
+            For AWS Academy Learner Lab Associate, you need to provide access key pair.<br>
+            <label for="AccessKey">Access Key:</label><br>
+            <input type="text" id="accessKey" name="accessKey" size="50"><br>            
+            <label for="SecretKey">Secret Key:</label><br>
+            <input type="text" id="secretKey" name="secretKey" size="50"><br>   
+`;
+            }
+
             return {
                 "headers": {
                     "Content-Type": " text/html"
@@ -86,14 +101,7 @@ exports.lambdaHandler = async(event, context) => {
             <input type="hidden" id="classroomName" name="classroomName" value="${classroomName}">
             <label for="Email">Email:</label><br>
             <input type="email" id="email" name="email" size="50" value="${studentEmail}" required><br>
-            For AWS Educate Classroom, you need to provide the Credentials.<br>
-            <label for="credentials">Credentials:</label><br>
-            <textarea id="rawKey" name="rawKey" rows="10" cols="100"></textarea><br>
-            For AWS Academy Learner Lab Associate, you need to provide access key pair.<br>
-            <label for="AccessKey">Access Key:</label><br>
-            <input type="text" id="accessKey" name="accessKey" size="50"><br>            
-            <label for="SecretKey">Secret Key:</label><br>
-            <input type="text" id="secretKey" name="secretKey" size="50"><br>            
+            ${inputFields}
             ${recaptcha}
         </form> 
         <footer>
