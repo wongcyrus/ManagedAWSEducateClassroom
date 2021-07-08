@@ -57,35 +57,36 @@ exports.lambdaHandler = async(event, context) => {
             secretAccessKey,
             region: "us-east-1"
         };
-        if (!accessKeyId) {
-            const sts = new AWS.STS();
-            const token = await sts.assumeRole({
-                RoleArn: roleArn,
-                RoleSessionName: 'studentAccount'
-            }).promise();
-            credentials = {
-                accessKeyId: token.Credentials.AccessKeyId,
-                secretAccessKey: token.Credentials.SecretAccessKey,
-                sessionToken: token.Credentials.SessionToken,
-                region: "us-east-1"
-            };
-        }
-
-        let graderParameter = await dynamo.get({
-            TableName: graderParameterTable,
-            Key: {
-                'id': classroomName + "#" + functionName + "#" + email,
-            }
-        }).promise();
-        console.log(graderParameter);
         try {
+            if (!accessKeyId) {
+                const sts = new AWS.STS();
+                const token = await sts.assumeRole({
+                    RoleArn: roleArn,
+                    RoleSessionName: 'studentAccount'
+                }).promise();
+                credentials = {
+                    accessKeyId: token.Credentials.AccessKeyId,
+                    secretAccessKey: token.Credentials.SecretAccessKey,
+                    sessionToken: token.Credentials.SessionToken,
+                    region: "us-east-1"
+                };
+            }
+
+            let graderParameter = await dynamo.get({
+                TableName: graderParameterTable,
+                Key: {
+                    'id': classroomName + "#" + functionName + "#" + email,
+                }
+            }).promise();
+            console.log(graderParameter);
+
 
             let eventArgs = {
                 aws_access_key: credentials.accessKeyId,
                 aws_secret_access_key: credentials.secretAccessKey,
             };
             if (credentials.sessionToken)
-                eventArgs.aws_session_token = credentials.sessionToken
+                eventArgs.aws_session_token = credentials.sessionToken;
 
             if (graderParameter.Item) {
                 eventArgs["graderParameter"] = graderParameter.Item.parameters;
@@ -186,6 +187,7 @@ const generateMarksheet = async(classroomName, functionName) => {
     }
     await common.putJsonToS3(classroomGradeBucket, classroomName + "/" + functionName + "/" + "marksheet.json", { marksheets });
     await common.putCsvToS3(classroomGradeBucket, classroomName + "/" + functionName + "/" + "marksheet.csv", marksheets.map(c => c[0] + "," + c[1]).reduce((c, v) => c + "\n" + v));
+    await common.putCsvToS3(classroomGradeBucket, classroomName + "/" + functionName + "/" + "detailed_marksheet.csv", marksheets.map(c => c.join()).join("\r\n"));
 
     let htmlData = [];
     for (const email of emails) {
@@ -214,6 +216,9 @@ const generateMarksheet = async(classroomName, functionName) => {
     </script>
     <div>
         <a href="marksheet.csv" target="_blank">Download CSV marksheet</a>
+    </div>
+    <div>
+        <a href="detailed_marksheet.csv" target="_blank">Download detailed CSV marksheet</a>
     </div>
 </body>
 </html>
