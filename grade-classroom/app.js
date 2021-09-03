@@ -48,27 +48,8 @@ exports.lambdaHandler = async(event, context) => {
             }
         }).promise();
         console.log(studentAccount);
-        params = {
-            FunctionName: `arn:aws:lambda:us-east-1:${studentAccount.Item.awsAccountId}:function:ManagedAWSAcademyLearnerLab-${awsAccountId}-KeyProvider`,
-            Payload: JSON.stringify({}),
-            InvocationType: "RequestResponse",
-        };
-        console.log(params);
-        const sessionKeyPairResponse = await lambda.invoke(params).promise();
-        const payload = JSON.parse(sessionKeyPairResponse.Payload);
-        const body = JSON.parse(payload.body);
-        const sessionKeyPair = JSON.parse(payload.body);
-        console.log(sessionKeyPair);
-        const accessKeyId = sessionKeyPair.AWS_ACCESS_KEY_ID;
-        const secretAccessKey = sessionKeyPair.AWS_SECRET_ACCESS_KEY;
-        const sessionToken = sessionKeyPair.AWS_SESSION_TOKEN;
-        
-        let credentials = {
-            accessKeyId,
-            secretAccessKey,
-            sessionToken,
-            region: "us-east-1"
-        };
+        let credentials = await common.getCredentials(studentAccount.Item.awsAccountId, awsAccountId);
+
         try {
             let graderParameter = await dynamo.get({
                 TableName: graderParameterTable,
@@ -81,9 +62,8 @@ exports.lambdaHandler = async(event, context) => {
             let eventArgs = {
                 aws_access_key: credentials.accessKeyId,
                 aws_secret_access_key: credentials.secretAccessKey,
+                aws_session_token: credentials.sessionToken
             };
-            if (credentials.sessionToken)
-                eventArgs.aws_session_token = credentials.sessionToken;
 
             if (graderParameter.Item) {
                 eventArgs["graderParameter"] = graderParameter.Item.parameters;

@@ -1,28 +1,12 @@
 const AWS = require('aws-sdk');
 const dynamo = new AWS.DynamoDB.DocumentClient();
 const studentAccountTable = process.env.StudentAccountTable;
+const common = require('/opt/nodejs/common');
 
 
 const startStudentInstance = async(param) => {
-    const { roleArn, stackName, notifyStudentTopic, accessKeyId, secretAccessKey } = param;
-    let credentials = {
-        accessKeyId,
-        secretAccessKey,
-        region: "us-east-1"
-    };
-    if (!accessKeyId) {
-        const sts = new AWS.STS();
-        const token = await sts.assumeRole({
-            RoleArn: roleArn,
-            RoleSessionName: 'studentAccount'
-        }).promise();
-        credentials = {
-            accessKeyId: token.Credentials.AccessKeyId,
-            secretAccessKey: token.Credentials.SecretAccessKey,
-            sessionToken: token.Credentials.SessionToken,
-            region: "us-east-1"
-        };
-    }
+    const { stackName, notifyStudentTopic, studentAwsAccountId, awsAccountId } = param;
+    const credentials = await common.getCredentials(studentAwsAccountId, awsAccountId);
 
     const cloudformation = new AWS.CloudFormation(credentials);
 
@@ -55,7 +39,7 @@ const startStudentInstance = async(param) => {
             Tags: c.Tags
         };
     });
-    
+
     console.log(JSON.stringify(messages));
 
     const sns = new AWS.SNS(credentials);
@@ -83,10 +67,9 @@ exports.lambdaHandler = async(event, context) => {
     const awsAccountId = context.invokedFunctionArn.split(":")[4];
     const param = {
         stackName,
-        roleArn: `arn:aws:iam::${studentAccount.Item.awsAccountId}:role/crossaccountteacher${awsAccountId}`,
         notifyStudentTopic: studentAccount.Item.notifyStudentTopic,
-        accessKeyId: studentAccount.Item.accessKeyId,
-        secretAccessKey: studentAccount.Item.secretAccessKey,
+        studentAwsAccountId: studentAccount.Item.awsAccountId,
+        awsAccountId: awsAccountId,
     };
     await startStudentInstance(param);
     return "OK";

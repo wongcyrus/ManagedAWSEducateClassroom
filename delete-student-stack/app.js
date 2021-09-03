@@ -1,29 +1,11 @@
 const AWS = require('aws-sdk');
 const studentAccountTable = process.env.StudentAccountTable;
 const dynamo = new AWS.DynamoDB.DocumentClient();
+const common = require('/opt/nodejs/common');
 
 const deleteStudentLabStack = async(param) => {
-    const { roleArn, stackName, accessKeyId, secretAccessKey } = param;
-
-    let credentials = {
-        accessKeyId,
-        secretAccessKey,
-        region: "us-east-1"
-    };
-    if (!accessKeyId) {
-        const sts = new AWS.STS();
-        const token = await sts.assumeRole({
-            RoleArn: roleArn,
-            RoleSessionName: 'studentAccount'
-        }).promise();
-        credentials = {
-            accessKeyId: token.Credentials.AccessKeyId,
-            secretAccessKey: token.Credentials.SecretAccessKey,
-            sessionToken: token.Credentials.SessionToken,
-            region: "us-east-1"
-        };
-    }
-
+    const { stackName, studentAwsAccountId, awsAccountId } = param;
+    const credentials = await common.getCredentials(studentAwsAccountId, awsAccountId);
     const cloudformation = new AWS.CloudFormation(credentials);
     const params = {
         StackName: stackName
@@ -46,9 +28,8 @@ exports.lambdaHandler = async(event, context) => {
     const awsAccountId = context.invokedFunctionArn.split(":")[4];
     const param = {
         stackName: stackName,
-        roleArn: `arn:aws:iam::${studentAccount.Item.awsAccountId}:role/crossaccountteacher${awsAccountId}`,
-        accessKeyId: studentAccount.Item.accessKeyId,
-        secretAccessKey: studentAccount.Item.secretAccessKey,
+        studentAwsAccountId: studentAccount.Item.awsAccountId,
+        awsAccountId: awsAccountId,
     };
     await deleteStudentLabStack(param);
     return "OK";
