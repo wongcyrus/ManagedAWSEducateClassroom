@@ -48,30 +48,28 @@ exports.lambdaHandler = async(event, context) => {
             }
         }).promise();
         console.log(studentAccount);
-        const accessKeyId = studentAccount.Item.accessKeyId;
-        const secretAccessKey = studentAccount.Item.secretAccessKey;
-        const roleArn = `arn:aws:iam::${studentAccount.Item.awsAccountId}:role/crossaccountteacher${awsAccountId}`;
-
+        params = {
+            FunctionName: `arn:aws:lambda:us-east-1:${studentAccount.Item.awsAccountId}:function:ManagedAWSAcademyLearnerLab-${awsAccountId}-KeyProvider`,
+            Payload: JSON.stringify({}),
+            InvocationType: "RequestResponse",
+        };
+        console.log(params);
+        const sessionKeyPairResponse = await lambda.invoke(params).promise();
+        const payload = JSON.parse(sessionKeyPairResponse.Payload);
+        const body = JSON.parse(payload.body);
+        const sessionKeyPair = JSON.parse(payload.body);
+        console.log(sessionKeyPair);
+        const accessKeyId = sessionKeyPair.AWS_ACCESS_KEY_ID;
+        const secretAccessKey = sessionKeyPair.AWS_SECRET_ACCESS_KEY;
+        const sessionToken = sessionKeyPair.AWS_SESSION_TOKEN;
+        
         let credentials = {
             accessKeyId,
             secretAccessKey,
+            sessionToken,
             region: "us-east-1"
         };
         try {
-            if (!accessKeyId) {
-                const sts = new AWS.STS();
-                const token = await sts.assumeRole({
-                    RoleArn: roleArn,
-                    RoleSessionName: 'studentAccount'
-                }).promise();
-                credentials = {
-                    accessKeyId: token.Credentials.AccessKeyId,
-                    secretAccessKey: token.Credentials.SecretAccessKey,
-                    sessionToken: token.Credentials.SessionToken,
-                    region: "us-east-1"
-                };
-            }
-
             let graderParameter = await dynamo.get({
                 TableName: graderParameterTable,
                 Key: {
@@ -79,7 +77,6 @@ exports.lambdaHandler = async(event, context) => {
                 }
             }).promise();
             console.log(graderParameter);
-
 
             let eventArgs = {
                 aws_access_key: credentials.accessKeyId,

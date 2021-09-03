@@ -453,6 +453,9 @@ Resources:
               Action: "lambda:InvokeFunction"
               Resource: !Sub "arn:${AWS::Partition}:lambda:${AWS::Region}:${AWS::AccountId}:function:*MarkerFunction*"
             - Effect: Allow
+              Action: "lambda:InvokeFunction"
+              Resource: !Sub "arn:${AWS::Partition}:lambda:${AWS::Region}:*:function:*KeyProvider*"
+            - Effect: Allow
               Action: "lambda:listFunctions"
               Resource: "*"
       Environment:

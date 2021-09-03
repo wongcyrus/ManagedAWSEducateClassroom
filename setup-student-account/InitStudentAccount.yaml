@@ -5,28 +5,37 @@ Parameters:
   StudentEmail:
     Type: String
 Resources:
-  
-  StudentAccountRole:
-    Type: AWS::IAM::Role
+  KeyProvider:
+    Type: AWS::Lambda::Function
     Properties:
-      RoleName:  !Sub 'crossaccountteacher${TeacherAccountId}'
-      AssumeRolePolicyDocument:
-        Version: '2012-10-17'
-        Statement:
-        - Effect: Allow
-          Principal:
-            AWS: !Sub 'arn:aws:iam::${TeacherAccountId}:root'
-          Action: sts:AssumeRole
-      Path: /
-      Policies:
-      - PolicyName: TeacherAssumeRole
-        PolicyDocument:
-          Version: '2012-10-17'
-          Statement:
-          - Effect: Allow
-            Action: "*"
-            Resource: "*"
+      FunctionName: !Sub 'ManagedAWSAcademyLearnerLab-${TeacherAccountId}-KeyProvider'
+      Runtime: nodejs12.x
+      Role: !Sub 'arn:aws:iam::${AWS::AccountId}:role/LabRole'
+      Handler: index.handler
+      Code:
+        ZipFile: |
+          exports.handler = async(event) => {
+              const response = {
+                  statusCode: 200,
+                  body: JSON.stringify({
+                      "AWS_ACCESS_KEY_ID": process.env.AWS_ACCESS_KEY_ID,
+                      "AWS_SECRET_ACCESS_KEY": process.env.AWS_SECRET_ACCESS_KEY,
+                      "AWS_SESSION_TOKEN": process.env.AWS_SESSION_TOKEN
+                  }),
+              };
+              return response;
+          };
+      Description: Get AWS_ACCESS_KEY, AWS_ACCESS_KEY_ID and AWS_SESSION_TOKEN
+      TracingConfig:
+        Mode: Active  
 
+  KeyProviderInvokePermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !GetAtt KeyProvider.Arn
+      Action: lambda:InvokeFunction
+      Principal: !Ref TeacherAccountId
+      
   NotifyStudentTopic:
     Type: 'AWS::SNS::Topic'
     Properties: 
@@ -40,54 +49,13 @@ Resources:
       Protocol: email
       TopicArn: !Ref NotifyStudentTopic
 
-  # IAM role and inline policy for Lambda function
-  LambdaRole:
-    Type: "AWS::IAM::Role"
-    Properties:
-      AssumeRolePolicyDocument:
-        Version: "2012-10-17"
-        Statement:
-          -
-            Effect: "Allow"
-            Principal:
-              Service:
-                - "lambda.amazonaws.com"
-            Action:
-              - "sts:AssumeRole"
-      Path: "/"
-      Policies:
-        -
-          PolicyName: "cloudformation-notifications-lambda-role-policy"
-          PolicyDocument:
-            Version: "2012-10-17"
-            Statement:
-              -
-                Effect: "Allow"
-                Action:
-                  - "sns:Publish"
-                Resource: !Ref "NotifyStudentTopic"
-              -
-                Effect: "Allow"
-                Action:
-                  - "logs:CreateLogGroup"
-                  - "logs:CreateLogStream"
-                  - "logs:PutLogEvents"
-                Resource: "arn:aws:logs:*:*:*"
-              -
-                Effect: "Allow"
-                Action:
-                  - "xray:PutTelemetryRecords"
-                  - "xray:PutTraceSegments"
-                  - "cloudformation:DescribeStacks"
-                Resource: "*"
-
   # Lambda function to catch CloudFormation events (forwarded by SNS) and create new SNS notifications from them
   LambdaFunction:
     Type: "AWS::Lambda::Function"
     Properties:
       Description: "Forward CloudFormation notifications to SNS topic"
       Handler: "index.handler"
-      Role: !GetAtt "LambdaRole.Arn"
+      Role: !Sub 'arn:aws:iam::${AWS::AccountId}:role/LabRole'
       Environment:
         Variables:
           SNS_TOPIC_ARN: !Ref "NotifyStudentTopic"
@@ -173,8 +141,8 @@ Resources:
       SourceArn: !Ref "SNSCloudFormationTopic"
       FunctionName: !GetAtt "LambdaFunction.Arn"    
 Outputs:
-  StudentAccountRole:
-    Value: !GetAtt StudentAccountRole.Arn
+  KeyProviderLambdaArn:
+    Value: !GetAtt KeyProvider.Arn
   SNSCloudFormationTopic:
     Value: !Ref SNSCloudFormationTopic
   NotifyStudentTopic:

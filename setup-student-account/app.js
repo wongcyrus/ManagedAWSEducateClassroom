@@ -49,7 +49,7 @@ const initStudentAccount = async(classroomName, email, rawKey, accessKey, secret
     const template = fs.readFileSync("InitStudentAccount.yaml", "utf8");
     const cloudformation = new AWS.CloudFormation(credentials);
     let params = {
-        StackName: 'ManagedAWSEduateClassroom-' + account,
+        StackName: 'ManagedAWSAcademyLearnerLab-' + account,
         Capabilities: [
             "CAPABILITY_IAM", "CAPABILITY_NAMED_IAM",
         ],
@@ -65,7 +65,7 @@ const initStudentAccount = async(classroomName, email, rawKey, accessKey, secret
     let response = await cloudformation.createStack(params).promise();
 
     params = {
-        StackName: 'ManagedAWSEduateClassroom-' + account
+        StackName: 'ManagedAWSAcademyLearnerLab-' + account
     };
     await cloudformation.waitFor('stackCreateComplete', params).promise();
     response = await cloudformation.describeStacks(params).promise();
