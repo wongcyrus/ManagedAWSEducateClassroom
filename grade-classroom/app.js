@@ -2,6 +2,7 @@ const AWS = require('aws-sdk');
 const dynamo = new AWS.DynamoDB.DocumentClient();
 const lambda = new AWS.Lambda();
 const common = require('/opt/nodejs/common');
+const he = require('he');
 
 const graderParameterTable = process.env.GraderParameterTable;
 const studentAccountTable = process.env.StudentAccountTable;
@@ -14,7 +15,7 @@ exports.lambdaHandler = async(event, context) => {
     if (event.Records) {
         let snsMessage = await common.getSnsMessage(event);
         if (snsMessage.Source === "Calendar-Trigger") {
-            ({ classroomName, functionName } = JSON.parse(snsMessage.desc));
+            ({ classroomName, functionName } = JSON.parse(he.decode(snsMessage.desc)));
         }
         else {
             let { message, emailBody } = await common.getSesInboxMessage(event);
