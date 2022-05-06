@@ -6,13 +6,13 @@ Metadata:
   AWS::ServerlessRepo::Application:
     Name: managed-aws-educate-classroom
     Description: >
-      A centralized control to all student’s AWS Educate Classroom Account. 
-      Educators can create and delete cloudformation stack in all student's AWS Account in each AWS Educate Classroom.
+      A centralized control to all student’s AWS Academy Learner Lab Account. 
+      Educators can create and delete cloudformation stack in all student's AWS Account in each AWS Academy Learner Lab.
     Author: Cyrus Wong
     SpdxLicenseId: Apache-2.0
     LicenseUrl: LICENSE.txt
     ReadmeUrl: README.md
-    Labels: ['cloudformation','AWS_Educate']
+    Labels: ['cloudformation','AWS_ACADEMY_LEARNER_LAB']
     HomePageUrl: https://www.linkedin.com/pulse/how-use-managed-aws-educate-classroom-calendar-build-wong/
     SemanticVersion: 0.0.2
     SourceCodeUrl: https://github.com/wongcyrus/managed-aws-educate-classroom
