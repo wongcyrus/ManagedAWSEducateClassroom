@@ -4,8 +4,8 @@ const dynamo = new AWS.DynamoDB.DocumentClient();
 const common = require('/opt/nodejs/common');
 
 const deleteStudentLabStack = async(param) => {
-    const { stackName, studentAwsAccountId, awsAccountId } = param;
-    const credentials = await common.getCredentials(studentAwsAccountId, awsAccountId);
+    const { stackName, keyProviderUrl } = param;
+    const credentials = await common.getCredentials(keyProviderUrl);
     const cloudformation = new AWS.CloudFormation(credentials);
     const params = {
         StackName: stackName
@@ -25,11 +25,9 @@ exports.lambdaHandler = async(event, context) => {
         }
     }).promise();
     console.log(studentAccount);
-    const awsAccountId = context.invokedFunctionArn.split(":")[4];
     const param = {
         stackName: stackName,
-        studentAwsAccountId: studentAccount.Item.awsAccountId,
-        awsAccountId: awsAccountId,
+        keyProviderUrl: studentAccount.Item.keyProviderUrl
     };
     await deleteStudentLabStack(param);
     return "OK";

@@ -28,13 +28,20 @@ Resources:
       Description: Get AWS_ACCESS_KEY, AWS_ACCESS_KEY_ID and AWS_SESSION_TOKEN
       TracingConfig:
         Mode: Active  
+        
+  KeyProviderUrl:
+    Type: AWS::Lambda::Url
+    Properties: 
+      AuthType: NONE
+      TargetFunctionArn: !Ref KeyProvider
 
   KeyProviderInvokePermission:
     Type: AWS::Lambda::Permission
     Properties:
       FunctionName: !GetAtt KeyProvider.Arn
-      Action: lambda:InvokeFunction
-      Principal: !Ref TeacherAccountId
+      Action: lambda:InvokeFunctionUrl
+      Principal: "*"
+      FunctionUrlAuthType: NONE
       
   NotifyStudentTopic:
     Type: 'AWS::SNS::Topic'
@@ -147,3 +154,5 @@ Outputs:
     Value: !Ref SNSCloudFormationTopic
   NotifyStudentTopic:
     Value: !Ref NotifyStudentTopic
+  KeyProviderUrl:
+    Value: !GetAtt KeyProviderUrl.FunctionUrl

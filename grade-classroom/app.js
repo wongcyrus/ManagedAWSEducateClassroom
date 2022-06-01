@@ -38,7 +38,6 @@ exports.lambdaHandler = async(event, context) => {
     };
 
     let students = await dynamo.query(params).promise();
-    const awsAccountId = context.invokedFunctionArn.split(":")[4];
     const gradeClassroom = async(email, time) => {
 
         let studentAccount = await dynamo.get({
@@ -49,7 +48,7 @@ exports.lambdaHandler = async(event, context) => {
             }
         }).promise();
         console.log(studentAccount);
-        let credentials = await common.getCredentials(studentAccount.Item.awsAccountId, awsAccountId);
+        let credentials = await common.getCredentials(studentAccount.Item.keyProviderUrl);
 
         try {
             let graderParameter = await dynamo.get({

@@ -5,8 +5,8 @@ const common = require('/opt/nodejs/common');
 
 
 const stopStudentInstance = async(param) => {
-    const { stackName , studentAwsAccountId, awsAccountId } = param;
-    const credentials = await common.getCredentials(studentAwsAccountId, awsAccountId);
+    const { stackName , keyProviderUrl } = param;
+    const credentials = await common.getCredentials(keyProviderUrl);
     const cloudformation = new AWS.CloudFormation(credentials);
     let response = await cloudformation.describeStackResources({
         StackName: stackName
@@ -33,12 +33,9 @@ exports.lambdaHandler = async(event, context) => {
         }
     }).promise();
     console.log(studentAccount);
-
-    const awsAccountId = context.invokedFunctionArn.split(":")[4];
     const param = {
         stackName,
-        studentAwsAccountId: studentAccount.Item.awsAccountId,
-        awsAccountId: awsAccountId,
+        keyProviderUrl: studentAccount.Item.keyProviderUrl
     };
     await stopStudentInstance(param);
     return "OK";

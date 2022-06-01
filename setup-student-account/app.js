@@ -74,6 +74,10 @@ const initStudentAccount = async(classroomName, email, rawKey, accessKey, secret
 
     let notifyStudentTopic = response.Stacks[0].Outputs
         .find(c => c.OutputKey === "NotifyStudentTopic").OutputValue;
+        
+    let keyProviderUrl = response.Stacks[0].Outputs
+        .find(c => c.OutputKey === "KeyProviderUrl").OutputValue;
+        
     console.log(classroomName, email, rawKey);
 
 
@@ -99,6 +103,7 @@ const initStudentAccount = async(classroomName, email, rawKey, accessKey, secret
             "awsAccountId": studentAcocuntIdentity.Account,
             "labStackCreationCompleteTopic": labStackCreationCompleteTopic,
             "notifyStudentTopic": notifyStudentTopic,
+            "keyProviderUrl": keyProviderUrl,
             "keyPair": keyPair
         };
     if (!rawKey) {

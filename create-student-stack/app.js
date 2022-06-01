@@ -8,8 +8,8 @@ const pemKeyFileUrl = process.env.PemKeyFileUrl;
 
 
 const createStudentLabStack = async(param) => {
-    const { templateBody, parameters, stackName, labStackCreationCompleteTopic, studentAwsAccountId, awsAccountId } = param;
-    const credentials = await common.getCredentials(studentAwsAccountId, awsAccountId);
+    const { templateBody, parameters, stackName, labStackCreationCompleteTopic, keyProviderUrl } = param;
+    const credentials = await common.getCredentials(keyProviderUrl);
     const cloudformation = new AWS.CloudFormation(credentials);
     const params = {
         StackName: stackName,
@@ -65,8 +65,7 @@ exports.lambdaHandler = async(event, context) => {
         labStackCreationCompleteTopic: studentAccount.Item.labStackCreationCompleteTopic,
         templateBody: await common.getS3File(bucket, templateKey),
         parameters: parameters,
-        studentAwsAccountId: studentAccount.Item.awsAccountId,
-        awsAccountId: awsAccountId,
+        keyProviderUrl: studentAccount.Item.keyProviderUrl
     };
     await createStudentLabStack(param);
     return "OK";
