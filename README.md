@@ -1,6 +1,6 @@
-# managed-aws-educate-classroom
+# Managed AWS Academy Learner Lab
 
-This project gives Educators have a centralized control to all student’s AWS Educate Classroom Account.
+This project gives Educators have a centralized control to all student’s AWS Academy Learner Lab Account.
 
 For Deployment and user guide, please check my blog post.
 
@@ -11,8 +11,13 @@ To upload sample template to managed-aws-educate-classroom-classroombucket
 
 aws s3 sync ./cloudformation  s3://managed-aws-educate-classroom-classroombucket-1oykzdnmwtrln
 
+# Build and Deploy
 
-## For Cloud9, we need to upgrade nodejs to verion 14.
+Update samconfig.toml
 
-curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.38.0/install.sh | bash
-nvm install 14
+```
+./install_all_packages.sh
+./build-layer.sh
+sam build && sam deploy
+```
+

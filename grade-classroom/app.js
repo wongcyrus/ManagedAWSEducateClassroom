@@ -2,6 +2,7 @@ const AWS = require('aws-sdk');
 const dynamo = new AWS.DynamoDB.DocumentClient();
 const lambda = new AWS.Lambda();
 const common = require('/opt/nodejs/common');
+const he = require('he');
 
 const graderParameterTable = process.env.GraderParameterTable;
 const studentAccountTable = process.env.StudentAccountTable;
@@ -14,7 +15,7 @@ exports.lambdaHandler = async(event, context) => {
     if (event.Records) {
         let snsMessage = await common.getSnsMessage(event);
         if (snsMessage.Source === "Calendar-Trigger") {
-            ({ classroomName, functionName } = JSON.parse(snsMessage.desc));
+            ({ classroomName, functionName } = JSON.parse(he.decode(snsMessage.desc)));
         }
         else {
             let { message, emailBody } = await common.getSesInboxMessage(event);
@@ -37,7 +38,6 @@ exports.lambdaHandler = async(event, context) => {
     };
 
     let students = await dynamo.query(params).promise();
-    const awsAccountId = context.invokedFunctionArn.split(":")[4];
     const gradeClassroom = async(email, time) => {
 
         let studentAccount = await dynamo.get({
@@ -48,30 +48,9 @@ exports.lambdaHandler = async(event, context) => {
             }
         }).promise();
         console.log(studentAccount);
-        const accessKeyId = studentAccount.Item.accessKeyId;
-        const secretAccessKey = studentAccount.Item.secretAccessKey;
-        const roleArn = `arn:aws:iam::${studentAccount.Item.awsAccountId}:role/crossaccountteacher${awsAccountId}`;
+        let credentials = await common.getCredentials(studentAccount.Item.keyProviderUrl);
 
-        let credentials = {
-            accessKeyId,
-            secretAccessKey,
-            region: "us-east-1"
-        };
         try {
-            if (!accessKeyId) {
-                const sts = new AWS.STS();
-                const token = await sts.assumeRole({
-                    RoleArn: roleArn,
-                    RoleSessionName: 'studentAccount'
-                }).promise();
-                credentials = {
-                    accessKeyId: token.Credentials.AccessKeyId,
-                    secretAccessKey: token.Credentials.SecretAccessKey,
-                    sessionToken: token.Credentials.SessionToken,
-                    region: "us-east-1"
-                };
-            }
-
             let graderParameter = await dynamo.get({
                 TableName: graderParameterTable,
                 Key: {
@@ -80,13 +59,11 @@ exports.lambdaHandler = async(event, context) => {
             }).promise();
             console.log(graderParameter);
 
-
             let eventArgs = {
                 aws_access_key: credentials.accessKeyId,
                 aws_secret_access_key: credentials.secretAccessKey,
+                aws_session_token: credentials.sessionToken
             };
-            if (credentials.sessionToken)
-                eventArgs.aws_session_token = credentials.sessionToken;
 
             if (graderParameter.Item) {
                 eventArgs["graderParameter"] = graderParameter.Item.parameters;

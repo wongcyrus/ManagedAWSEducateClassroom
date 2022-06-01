@@ -49,7 +49,7 @@ const initStudentAccount = async(classroomName, email, rawKey, accessKey, secret
     const template = fs.readFileSync("InitStudentAccount.yaml", "utf8");
     const cloudformation = new AWS.CloudFormation(credentials);
     let params = {
-        StackName: 'ManagedAWSEduateClassroom-' + account,
+        StackName: 'ManagedAWSAcademyLearnerLab-' + account,
         Capabilities: [
             "CAPABILITY_IAM", "CAPABILITY_NAMED_IAM",
         ],
@@ -65,7 +65,7 @@ const initStudentAccount = async(classroomName, email, rawKey, accessKey, secret
     let response = await cloudformation.createStack(params).promise();
 
     params = {
-        StackName: 'ManagedAWSEduateClassroom-' + account
+        StackName: 'ManagedAWSAcademyLearnerLab-' + account
     };
     await cloudformation.waitFor('stackCreateComplete', params).promise();
     response = await cloudformation.describeStacks(params).promise();
@@ -74,6 +74,10 @@ const initStudentAccount = async(classroomName, email, rawKey, accessKey, secret
 
     let notifyStudentTopic = response.Stacks[0].Outputs
         .find(c => c.OutputKey === "NotifyStudentTopic").OutputValue;
+        
+    let keyProviderUrl = response.Stacks[0].Outputs
+        .find(c => c.OutputKey === "KeyProviderUrl").OutputValue;
+        
     console.log(classroomName, email, rawKey);
 
 
@@ -99,6 +103,7 @@ const initStudentAccount = async(classroomName, email, rawKey, accessKey, secret
             "awsAccountId": studentAcocuntIdentity.Account,
             "labStackCreationCompleteTopic": labStackCreationCompleteTopic,
             "notifyStudentTopic": notifyStudentTopic,
+            "keyProviderUrl": keyProviderUrl,
             "keyPair": keyPair
         };
     if (!rawKey) {

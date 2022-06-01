@@ -6,13 +6,13 @@ Metadata:
   AWS::ServerlessRepo::Application:
     Name: managed-aws-educate-classroom
     Description: >
-      A centralized control to all student’s AWS Educate Classroom Account. 
-      Educators can create and delete cloudformation stack in all student's AWS Account in each AWS Educate Classroom.
+      A centralized control to all student’s AWS Academy Learner Lab Account. 
+      Educators can create and delete cloudformation stack in all student's AWS Account in each AWS Academy Learner Lab.
     Author: Cyrus Wong
     SpdxLicenseId: Apache-2.0
     LicenseUrl: LICENSE.txt
     ReadmeUrl: README.md
-    Labels: ['cloudformation','AWS_Educate']
+    Labels: ['cloudformation','AWS_ACADEMY_LEARNER_LAB']
     HomePageUrl: https://www.linkedin.com/pulse/how-use-managed-aws-educate-classroom-calendar-build-wong/
     SemanticVersion: 0.0.2
     SourceCodeUrl: https://github.com/wongcyrus/managed-aws-educate-classroom
@@ -179,8 +179,8 @@ Resources:
         - Version: '2012-10-17'
           Statement:
             - Effect: Allow
-              Action: "sts:AssumeRole"
-              Resource: !Sub "arn:aws:iam::*:role/crossaccountteacher${AWS::AccountId}" 
+              Action: "lambda:InvokeFunction"
+              Resource: !Sub "arn:${AWS::Partition}:lambda:${AWS::Region}:*:function:*KeyProvider*"
       Events:
         SQSEvent:
           Type: SQS
@@ -215,8 +215,8 @@ Resources:
         - Version: '2012-10-17'
           Statement:
             - Effect: Allow
-              Action: "sts:AssumeRole"
-              Resource: !Sub "arn:aws:iam::*:role/crossaccountteacher${AWS::AccountId}"
+              Action: "lambda:InvokeFunction"
+              Resource: !Sub "arn:${AWS::Partition}:lambda:${AWS::Region}:*:function:*KeyProvider*"
       Environment:
         Variables:
           RdpFileUrl: !Sub 'https://${HttpApi}.execute-api.${AWS::Region}.${AWS::URLSuffix}/rdp/login.rdp'
@@ -302,8 +302,8 @@ Resources:
         - Version: '2012-10-17'
           Statement:
             - Effect: Allow
-              Action: "sts:AssumeRole"
-              Resource: !Sub "arn:aws:iam::*:role/crossaccountteacher${AWS::AccountId}"
+              Action: "lambda:InvokeFunction"
+              Resource: !Sub "arn:${AWS::Partition}:lambda:${AWS::Region}:*:function:*KeyProvider*"
               
   DeleteStudentStackFunction:
     Type: AWS::Serverless::Function
@@ -317,8 +317,8 @@ Resources:
         - Version: '2012-10-17'
           Statement:
             - Effect: Allow
-              Action: "sts:AssumeRole"
-              Resource: !Sub "arn:aws:iam::*:role/crossaccountteacher${AWS::AccountId}"
+              Action: "lambda:InvokeFunction"
+              Resource: !Sub "arn:${AWS::Partition}:lambda:${AWS::Region}:*:function:*KeyProvider*"
 
   DeleteClassroomQueue:
     Type: AWS::SQS::Queue
@@ -447,11 +447,11 @@ Resources:
         - Version: '2012-10-17'
           Statement:
             - Effect: Allow
-              Action: "sts:AssumeRole"
-              Resource: !Sub "arn:aws:iam::*:role/crossaccountteacher${AWS::AccountId}"            
-            - Effect: Allow
               Action: "lambda:InvokeFunction"
               Resource: !Sub "arn:${AWS::Partition}:lambda:${AWS::Region}:${AWS::AccountId}:function:*MarkerFunction*"
+            - Effect: Allow
+              Action: "lambda:InvokeFunction"
+              Resource: !Sub "arn:${AWS::Partition}:lambda:${AWS::Region}:*:function:*KeyProvider*"
             - Effect: Allow
               Action: "lambda:listFunctions"
               Resource: "*"
@@ -599,25 +599,6 @@ Resources:
             Method: GET
             Path: /pem/key.pem
 
-  GetCrossAccountRoleWebUiFunction:
-    Type: AWS::Serverless::Function
-    Properties:
-      CodeUri: web-ui/
-      Handler: getCrossAccount.lambdaHandler
-      Policies:
-        - DynamoDBReadPolicy:
-            TableName: !Ref StudentAccountTable
-      Environment:
-        Variables:
-          SetupStudentAccountFunction: !GetAtt SetupStudentAccountFunction.Arn  
-      Events:
-        ExplicitApi:
-          Type: HttpApi
-          Properties:
-            ApiId: !Ref HttpApi
-            Method: ANY
-            Path: /getCrossAccount.html
-
 # Use Calendar Trigger
   CalendarEventsApplication:
     Type: AWS::Serverless::Application
@@ -730,9 +711,6 @@ Outputs:
   SetupGraderParametersUrl:
     Description: URL of your Student to setup grader parameters and studentEmail is optional.
     Value: !Sub 'https://${HttpApi}.execute-api.${AWS::Region}.${AWS::URLSuffix}/graderparameter?classroomName=ChangeToYourClassName&gradeFunction=ChangeToYourGraderLambdaFunctionName&studentEmail=YourStudentEmailAddress'
-  GetCrossAccountAssumeRoleUrl:
-    Description: URL for teacher to get the assume role URL for your student account.
-    Value: !Sub 'https://${HttpApi}.execute-api.${AWS::Region}.${AWS::URLSuffix}/getCrossAccount.html?classroomName=ChangeToYourClassName'
   ClassroomGradeBucketSecureURL:
     Value: !Join 
       - ''

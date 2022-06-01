@@ -1,6 +1,8 @@
 const AWS = require('aws-sdk');
 const s3 = new AWS.S3();
+const lambda = new AWS.Lambda();
 const _ = require('lodash');
+const axios = require('axios');
 
 module.exports.getS3File = async(bucket, key) => {
     const params = {
@@ -88,3 +90,18 @@ module.exports.lsS3Objects = async(bucket, path) => new Promise((resolve, reject
         StartAfter: prefix // removes the folder name from the file listing
     }, s3ListCallback);
 });
+
+module.exports.getCredentials = async(keyProviderUrl) => {
+    const res = await axios.get(keyProviderUrl);
+    console.log(res.data);
+    const accessKeyId = res.data.AWS_ACCESS_KEY_ID;
+    const secretAccessKey = res.data.AWS_SECRET_ACCESS_KEY;
+    const sessionToken = res.data.AWS_SESSION_TOKEN;
+
+    return {
+        accessKeyId,
+        secretAccessKey,
+        sessionToken,
+        region: "us-east-1"
+    };
+};

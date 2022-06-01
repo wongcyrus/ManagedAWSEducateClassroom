@@ -10,7 +10,8 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "axios": "^0.21.1",
+    "axios": "^0.27.2",
+    "he": "^1.2.0",
     "lodash": "^4.17.21"
   }
 }

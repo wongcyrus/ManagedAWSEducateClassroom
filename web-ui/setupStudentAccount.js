@@ -66,7 +66,7 @@ exports.lambdaHandler = async(event, context) => {
             }
 
             let inputFields = `
-            For AWS Educate Classroom, you need to provide the Credentials.<br>
+            For Managed AWS Academy Learner Lab, you need to provide the Credentials.<br>
             <label for="credentials">Credentials:</label><br>
             <textarea id="rawKey" name="rawKey" rows="10" cols="100"></textarea><br>
 `;
@@ -89,12 +89,12 @@ exports.lambdaHandler = async(event, context) => {
 <!DOCTYPE html>
 <html>
     <head>
-      <title>Managed AWS Educate Classroom Student Account Registration</title>
+      <title>Managed AWS Academy Learner Lab Student Account Registration</title>
         <script src="https://www.google.com/recaptcha/api.js?render=${recaptchaSiteKey}"></script>
         <meta charset="utf-8"/>
     </head>
     <body>
-        <h2>Managed AWS Educate Classroom Student Account Registration - ${classroomName}</h2>
+        <h2>Managed AWS Academy Learner Lab Student Account Registration - ${classroomName}</h2>
         <form id="keyform" method="POST" action="/">
             <input type="hidden" id="g-recaptcha-response" name="g-recaptcha-response">
             <input type="hidden" name="action" value="validate_captcha">
@@ -171,7 +171,7 @@ exports.lambdaHandler = async(event, context) => {
 <!DOCTYPE html>
 <html>
     <head>
-      <title>Managed AWS Educate Classroom Student Account Registration - Completed</title>
+      <title>Managed AWS Academy Learner Lab Student Account Registration - Completed</title>
     </head>
     <body>
         <h2>Please check your email inbox after 5 minutes and confirm the SNS topic subscription.</h2>

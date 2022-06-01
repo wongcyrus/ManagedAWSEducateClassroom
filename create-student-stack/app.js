@@ -8,27 +8,8 @@ const pemKeyFileUrl = process.env.PemKeyFileUrl;
 
 
 const createStudentLabStack = async(param) => {
-    const { roleArn, templateBody, parameters, stackName, labStackCreationCompleteTopic, accessKeyId, secretAccessKey } = param;
-
-    let credentials = {
-        accessKeyId,
-        secretAccessKey,
-        region: "us-east-1"
-    };
-    if (!accessKeyId) {
-        const sts = new AWS.STS();
-        const token = await sts.assumeRole({
-            RoleArn: roleArn,
-            RoleSessionName: 'studentAccount'
-        }).promise();
-        credentials = {
-            accessKeyId: token.Credentials.AccessKeyId,
-            secretAccessKey: token.Credentials.SecretAccessKey,
-            sessionToken: token.Credentials.SessionToken,
-            region: "us-east-1"
-        };
-    }
-
+    const { templateBody, parameters, stackName, labStackCreationCompleteTopic, keyProviderUrl } = param;
+    const credentials = await common.getCredentials(keyProviderUrl);
     const cloudformation = new AWS.CloudFormation(credentials);
     const params = {
         StackName: stackName,
@@ -82,11 +63,9 @@ exports.lambdaHandler = async(event, context) => {
     const param = {
         stackName,
         labStackCreationCompleteTopic: studentAccount.Item.labStackCreationCompleteTopic,
-        roleArn: `arn:aws:iam::${studentAccount.Item.awsAccountId}:role/crossaccountteacher${awsAccountId}`,
         templateBody: await common.getS3File(bucket, templateKey),
         parameters: parameters,
-        accessKeyId: studentAccount.Item.accessKeyId,
-        secretAccessKey: studentAccount.Item.secretAccessKey,
+        keyProviderUrl: studentAccount.Item.keyProviderUrl
     };
     await createStudentLabStack(param);
     return "OK";
