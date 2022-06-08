@@ -10,6 +10,11 @@ const pemKeyFileUrl = process.env.PemKeyFileUrl;
 const createStudentLabStack = async(param) => {
     const { templateBody, parameters, stackName, labStackCreationCompleteTopic, keyProviderUrl } = param;
     const credentials = await common.getCredentials(keyProviderUrl);
+    
+    if(!credentials){
+         console.log("credentials error.");
+         return;
+    }
     const cloudformation = new AWS.CloudFormation(credentials);
     const params = {
         StackName: stackName,

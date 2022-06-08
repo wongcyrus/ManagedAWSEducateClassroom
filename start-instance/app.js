@@ -7,6 +7,11 @@ const common = require('/opt/nodejs/common');
 const startStudentInstance = async(param) => {
     const { stackName, notifyStudentTopic, keyProviderUrl } = param;
     const credentials = await common.getCredentials(keyProviderUrl);
+    
+    if(!credentials){
+         console.log("credentials error.");
+         return;
+    }
 
     const cloudformation = new AWS.CloudFormation(credentials);
 

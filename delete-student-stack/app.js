@@ -6,6 +6,10 @@ const common = require('/opt/nodejs/common');
 const deleteStudentLabStack = async(param) => {
     const { stackName, keyProviderUrl } = param;
     const credentials = await common.getCredentials(keyProviderUrl);
+    if(!credentials){
+         console.log("credentials error.");
+         return;
+    }
     const cloudformation = new AWS.CloudFormation(credentials);
     const params = {
         StackName: stackName

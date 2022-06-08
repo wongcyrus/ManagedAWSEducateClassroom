@@ -49,6 +49,11 @@ exports.lambdaHandler = async(event, context) => {
         }).promise();
         console.log(studentAccount);
         let credentials = await common.getCredentials(studentAccount.Item.keyProviderUrl);
+        
+        if(!credentials){
+            console.log("credentials error.");
+            return;
+        }
 
         try {
             let graderParameter = await dynamo.get({
