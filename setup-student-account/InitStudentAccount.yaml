@@ -9,7 +9,7 @@ Resources:
     Type: AWS::Lambda::Function
     Properties:
       FunctionName: !Sub 'ManagedAWSAcademyLearnerLab-${TeacherAccountId}-KeyProvider'
-      Runtime: nodejs12.x
+      Runtime: nodejs16.x
       Role: !Sub 'arn:aws:iam::${AWS::AccountId}:role/LabRole'
       Handler: index.handler
       Code:
@@ -126,7 +126,7 @@ Resources:
                         Message=json.dumps(out, indent=2),
                         TopicArn=sns_topic_arn
                     )
-      Runtime: "python3.6"
+      Runtime: "python3.9"
       Timeout: "90"
 
   # SNS topic and inline subscription to forward events to Lambda function
