@@ -1,7 +1,7 @@
 const AWS = require('aws-sdk');
 const dynamo = new AWS.DynamoDB.DocumentClient();
 const querystring = require('querystring');
-const axios = require('axios');
+const axios = require('axios').default;
 const recaptchaSiteKey = process.env.RecaptchaSiteKey;
 const recaptchaSercetKey = process.env.RecaptchaSercetKey;
 const graderParameterTable = process.env.GraderParameterTable;

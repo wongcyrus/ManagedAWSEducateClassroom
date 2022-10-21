@@ -1,7 +1,7 @@
 const AWS = require('aws-sdk');
 const lambda = new AWS.Lambda();
 const querystring = require('querystring');
-const axios = require('axios');
+const axios = require('axios').default;
 const setupStudentAccountFunctionArn = process.env.SetupStudentAccountFunction;
 const recaptchaSiteKey = process.env.RecaptchaSiteKey;
 const recaptchaSercetKey = process.env.RecaptchaSercetKey;

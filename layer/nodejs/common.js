@@ -2,7 +2,7 @@ const AWS = require('aws-sdk');
 const s3 = new AWS.S3();
 const lambda = new AWS.Lambda();
 const _ = require('lodash');
-const axios = require('axios');
+const axios = require('axios').default;
 
 module.exports.getS3File = async(bucket, key) => {
     const params = {
