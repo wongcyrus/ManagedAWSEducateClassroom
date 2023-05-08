@@ -97,7 +97,7 @@ Globals:
   Function:
     Handler: app.lambdaHandler
     Timeout: 180
-    Runtime: nodejs14.x
+    Runtime: nodejs18.x
     Layers: 
       - !Ref CommonLayer
     Environment:
@@ -120,7 +120,7 @@ Resources:
       ContentUri: layer/.
       RetentionPolicy: Delete
       CompatibleRuntimes:
-        - nodejs14.x
+        - nodejs18.x
 
 # Setup Student Account.        
   SetupStudentAccountQueue:
@@ -506,10 +506,17 @@ Resources:
   ClassroomGradeBucket:
     Type: AWS::S3::Bucket
     Properties:
-      AccessControl: PublicRead
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: false
+        BlockPublicPolicy: false
+        IgnorePublicAcls: false
+        RestrictPublicBuckets: false       
       WebsiteConfiguration:
         IndexDocument: index.html
         ErrorDocument: error.html
+      OwnershipControls:
+        Rules:
+           - ObjectOwnership: BucketOwnerEnforced
     DeletionPolicy: Retain
   ClassroomGradeBucketPolicy:
     Type: AWS::S3::BucketPolicy

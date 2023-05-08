@@ -8,7 +8,7 @@ const graderParameterTable = process.env.GraderParameterTable;
 const studentAccountTable = process.env.StudentAccountTable;
 const classroomGradeBucket = process.env.ClassroomGradeBucket;
 
-exports.lambdaHandler = async(event, context) => {
+exports.lambdaHandler = async (event, context) => {
     console.log(event);
     let { classroomName, functionName } = event;
 
@@ -38,7 +38,7 @@ exports.lambdaHandler = async(event, context) => {
     };
 
     let students = await dynamo.query(params).promise();
-    const gradeClassroom = async(email, time) => {
+    const gradeClassroom = async (email, time) => {
 
         let studentAccount = await dynamo.get({
             TableName: studentAccountTable,
@@ -49,8 +49,8 @@ exports.lambdaHandler = async(event, context) => {
         }).promise();
         console.log(studentAccount);
         let credentials = await common.getCredentials(studentAccount.Item.keyProviderUrl);
-        
-        if(!credentials){
+
+        if (!credentials) {
             console.log("credentials error.");
             return;
         }
@@ -138,9 +138,9 @@ exports.lambdaHandler = async(event, context) => {
     return results;
 };
 
-const generateMarksheet = async(classroomName, functionName) => {
+const generateMarksheet = async (classroomName, functionName) => {
     const lsResult = await common.lsS3Objects(classroomGradeBucket, "/" + classroomName + "/" + functionName + "/");
-    const markReports = lsResult.files.filter(c => c.includes("classReport"));
+    const markReports = lsResult.files.filter(c => c.includes("classReport") && c !== "classReport.json");
 
     const previousMarkReports = await Promise.all(markReports.map(async k => JSON.parse(await common.getS3File(classroomGradeBucket, k))));
     const allTests = previousMarkReports.map(c => c.marks).map(c => c.map(a => ({ email: a.email, passedTests: a.tests.filter(a => a.pass).map(a => a.test) })));
